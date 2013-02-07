@@ -210,18 +210,18 @@ do
 		logit "API_NODE_IP : [${API_NODE_IP}]"
 		API_NODE_ID=${API_NODE_ID/*=/}
 		# set the API node in single user more :
-		logit "Setting the API node [${API_NODE_ID}]"
-		logit "${add_sudo}ndb_mgms --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'enter single user mode ${API_NODE_ID}'" 
+		logit "Setting the API node [${API_NODE_ID}] in single user mode"
+		logit "${add_sudo}ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'enter single user mode ${API_NODE_ID}'" 
 		logit "Cheking the status of ndbd id ${nodeID}"
 		# logit "ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'show' | grep "^id=$nodeID" | grep "@${IP}""
-		status=$(${add_sudo}ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'show' | grep "^id=$nodeID" | grep "@${IP}")
+		status=$(${add_sudo}ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'show' | grep "^id={$nodeID}" | grep "@${IP}")
 		logit "${add_sudo}ndbd id ${nodeID} status : ${status}"
 		# "id=4    @10.95.109.196  (mysql-5.5.29 ndb-7.2.10, single user mode"
 		logit "Restarting the ndbd id ${nodeID} with initial switch via : ${command_restar_ndbd}"
 		logit "${command_restar_ndbd}"
-		logit "In case we have single user mode enabled at ndbd node id ${nodeID} at IP ${IP} we executring the restore"
-		
-		logit "${add_sudo}ndb_restores -c ${API_NODE_IP} -m -b ${NDB_BACKUP_NAME} -n ${API_NODE_ID} -r ${NDB_BACKUP_DIR}"
+		logit "In case we have single user mode enabled at ndbd node id ${nodeID} at IP ${IP} we executing the restore"
+		logit "${add_sudo}ndb_restores -c ${API_NODE_IP} -m -b ${NDB_BACKUP_NUMBER} -n ${nodeID} -r ${NDB_BACKUP_DIR}"
+		break;
 	fi 
 done
         logit "Exiting the single user more:"
