@@ -95,14 +95,14 @@ logit "got backupDir : ${backupDir}";
 # choose the backup 
 while [ 1  ]
 do 
-        read  -r -p "$(date)::[${HOSTNAME}] : Do you want to choose ANOTHER backup forder : Yes/No [y/n]"  choice
+        read  -r -p "$(date)::[${HOSTNAME}] : Do you want to choose ANOTHER backup forder : Yes/No [y/n] :"  choice
         if [ "$choice" != "" ]
         then
 		case $choice in
 		"Yes" | "yes" | "y" | "Si" | "si" )
 		while [ 1  ]
 		do 
-			read  -r -p "$(date)::[${HOSTNAME}] : Please choose provide the full name of the backup forder or hit CTRL+C to terminate..."  chosenDIR
+			read  -r -p "$(date)::[${HOSTNAME}] : Please choose provide the full name of the backup forder or hit CTRL+C to terminate...: "  chosenDIR
 			if [ -d "${chosenDIR}" ]
 			then
 				echo "";
@@ -150,12 +150,12 @@ fi
 
 if [ -d "${backupDir}" ]
 then
-	${add_sudo}ls -1rt "${backupDir}/" |  while read crap;do logit "Found backup local backup of ndb_mgmd id ${nodeID}::${IP} : [$crap]";done
+	${add_sudo}ls -1rt "${backupDir}/" |  while read crap; do logit "Found backup local backup of ndb_mgmd id ${nodeID}::${IP} : [$crap]";done
 fi
 
 while [ 1  ]
 do 
-        read  -r -p "$(date)::[${HOSTNAME}] : Please choose backup to restore or hit CTRL+C to terminate..."  paused
+        read  -r -p "$(date)::[${HOSTNAME}] : Please choose backup to restore or hit CTRL+C to terminate...:  "  paused
         if [ "$paused" != ""  -a -d "${backupDir}/${paused}" ]
         then
                 NDB_BACKUP_NUMBER=${paused/*-/}
@@ -188,8 +188,8 @@ if [ -d "${NDB_BACKUP_DIR}" ]
 then
 	logit "We are about to proceed with the restore of the backup at ${NDB_BACKUP_DIR}:  $(${add_sudo}ls -lrth ${NDB_BACKUP_DIR})"
         logit "Checking the backup consistency:"
-        NDB_BACKUP_STATUS=$(${add_sudo}ndb_print_backup_file "${NDB_BACKUP_LOG}" | grep -i "NDBBCKUP")
-	test `echo ${NDB_BACKUP_STATUS} | wc -l ` -eq 0 && logit "${NDB_BACKUP_LOG} is NOT NDB consistane Backup file!" && exit 0
+        NDB_BACKUP_STATUS=$(${add_sudo}ndb_print_backup_file "${NDB_BACKUP_LOG}")
+	test `echo ${NDB_BACKUP_STATUS}  | grep -i "NDBBCKUP" | wc -l ` -eq 0 && logit "${NDB_BACKUP_LOG} is NOT NDB consistane Backup file!" && exit 0
 	echo "${NDB_BACKUP_STATUS}"
 else 
         logit "ERROR : Missing NDB BACKUP directory ${NDB_BACKUP_DIR}!"
@@ -204,20 +204,30 @@ echo "${api_data}"
 echo "${api_data}" | sed  '/^\[mysqld(API)\]/d' | \
 while read  API_NODE_ID API_NODE_IP crap 
 do
-        API_NODE_ID=${API_NODE_ID/*=/}
-        # set the API node in single user more :
-        logit "Setting the API node [${API_NODE_ID}]"
-        logit "${add_sudo}ndb_mgms --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'enter single user mode ${API_NODE_ID}'" 
-        logit "Cheking the status of ndbd id ${nodeID}"
-        # logit "ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'show' | grep "^id=$nodeID" | grep "@${IP}""
-        status=$(${add_sudo}ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'show' | grep "^id=$nodeID" | grep "@${IP}")
-        logit "${add_sudo}ndbd id ${nodeID} status : ${status}"
-#       "id=4    @10.95.109.196  (mysql-5.5.29 ndb-7.2.10, single user mode"
-	logit "Restarting the ndbd id ${nodeID} with initial switch via : ${command_restar_ndbd}"
-	logit "${command_restar_ndbd}"
-        logit "In case we have single user mode enabled at ndbd node id ${nodeID} at IP ${IP} we executring the restore"
-	
-        logit "${add_sudo}ndb_restores -c ${API_NODE_IP} -m -b ${NDB_BACKUP_NAME} -n ${API_NODE_ID} -r ${NDB_BACKUP_DIR}"
+# 	logit "CRAP : [${crap}]"
+# 	logit "${API_NODE_IP} $crap"
+#	continue;
+	logit "API_NODE_ID : [${API_NODE_ID}]"
+	if [ `echo "${API_NODE_IP} $crap" | grep "not connected" | wc -l` -gt 0 ] 
+	then 
+		logit "Skipping NOT CONNECTED API Node ID [${API_NODE_ID}] ${API_NODE_IP}{$crap}";
+	else
+		logit "API_NODE_IP : [${API_NODE_IP}]"
+		API_NODE_ID=${API_NODE_ID/*=/}
+		# set the API node in single user more :
+		logit "Setting the API node [${API_NODE_ID}]"
+		logit "${add_sudo}ndb_mgms --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'enter single user mode ${API_NODE_ID}'" 
+		logit "Cheking the status of ndbd id ${nodeID}"
+		# logit "ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'show' | grep "^id=$nodeID" | grep "@${IP}""
+		status=$(${add_sudo}ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'show' | grep "^id=$nodeID" | grep "@${IP}")
+		logit "${add_sudo}ndbd id ${nodeID} status : ${status}"
+		# "id=4    @10.95.109.196  (mysql-5.5.29 ndb-7.2.10, single user mode"
+		logit "Restarting the ndbd id ${nodeID} with initial switch via : ${command_restar_ndbd}"
+		logit "${command_restar_ndbd}"
+		logit "In case we have single user mode enabled at ndbd node id ${nodeID} at IP ${IP} we executring the restore"
+		
+		logit "${add_sudo}ndb_restores -c ${API_NODE_IP} -m -b ${NDB_BACKUP_NAME} -n ${API_NODE_ID} -r ${NDB_BACKUP_DIR}"
+	fi 
 done
         logit "Exiting the single user more:"
         logit "${add_sudo}ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'exit single user mode'"
