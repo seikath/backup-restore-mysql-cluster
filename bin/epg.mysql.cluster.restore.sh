@@ -1,7 +1,7 @@
 #!/bin/sh
 # epgbcn4 aka seikath@gmail.com
 # is410@epg-mysql-memo1:~/bin/epg.mysql.cluster.restore.sh
-# moved to bitpucket : 2013-02-06.15.26.48
+# moved to bitbucket : 2013-02-06.15.26.48
 
 
 SCRIPT_NAME=${0%.*}
