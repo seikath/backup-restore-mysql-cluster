@@ -74,34 +74,59 @@ then
         read  IP nodeID backupDir < "${TMP_WORL_FILE}" 
 fi
 
-
 logit "got IP ${IP}";
 logit "got nodeID : ${nodeID}";
 logit "got backupDir : ${backupDir}";
- 
-if [ -d "${backupDir}" ]
-then
-ls -1rt "${backupDir}/" |  while read crap;do logit "found backup local backup of ndb_mgmd id ${nodeID}::${IP} : [$crap]";done
-fi
 
 # choose the backup 
 # choose the backup 
 while [ 1  ]
 do 
-        read  -r -p "$(date)::[${HOSTNAME}] : Do you want to choose particular backup forder "  paused
-        if [ "$paused" != ""  -a -d "${backupDir}/${paused}" ]
+        read  -r -p "$(date)::[${HOSTNAME}] : Do you want to choose particular backup forder : Yes/No [y/n]"  choice
+        if [ "$choice" != "" ]
         then
-                echo "";
-                NDB_BACKUP_NUMBER=${paused/*-/}
-                NDB_BACKUP_DIR="${backupDir}/${paused}"
-                NDB_BACKUP_LOG="${backupDir}/${paused}/${paused}.${nodeID}.log"
-                logit "We are about to proceed with the restore of the backup at ${NDB_BACKUP_DIR}:  $(ls -lrth ${NDB_BACKUP_DIR})"
-                break;
-        else 
-                echo ""
+		case $choice in
+		"Yes" | "yes" | "y" | "Si" | "si" )
+		while [ 1  ]
+		do 
+			read  -r -p "$(date)::[${HOSTNAME}] : Please choose provide the full name of the backup forder or hit CTRL+C to terminate..."  chosenDIR
+			if [ -d "${chosenDIR}" ]
+			then
+				echo "";
+				NDB_BACKUP_NUMBER=${chosenDIR/*-/}
+				NDB_BACKUP_NAME=${chosenDIR##*/}
+				backupDir="${chosenDIR}"
+				NDB_BACKUP_LOG="${backupDir}/${NDB_BACKUP_NAME}.${nodeID}.log"
+				logit "NDB_BACKUP_NUMBER : ${NDB_BACKUP_NUMBER}" 
+				logit "NDB_BACKUP_NAME : ${NDB_BACKUP_NAME}" 
+				logit "NDB_BACKUP_LOG : ${NDB_BACKUP_LOG}" 
+				#logit "We are about to proceed with the restore of the backup at ${NDB_BACKUP_DIR}:  $(ls -lrth ${NDB_BACKUP_DIR})"
+				break;
+			else 
+				logit "We can not find the backup forder of ${chosenDIR}"
+				echo ""
+			fi
+		done
+		;; 
+		"No" | "n" )
+		logit "Proceeding wit the condifured nightly backup.."
+		break;
+		;;
+		*)
+		logit "Empty imput, please provide the full name of the backup forder or hit CTRL+C to terminate:"
+		;;
+		esac
         fi
 done
 
+
+
+
+ 
+if [ -d "${backupDir}" ]
+then
+ls -1rt "${backupDir}/" |  while read crap;do logit "Found backup local backup of ndb_mgmd id ${nodeID}::${IP} : [$crap]";done
+fi
 
 while [ 1  ]
 do 
