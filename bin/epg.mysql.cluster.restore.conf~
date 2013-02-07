@@ -1,0 +1,11 @@
+# epgbcn4 aka seikath@gmail.com
+# is410@epg-mysql-memo1:~/bin/epg.mysql.cluster.restore.sh
+
+ndbd[1]=10.95.109.195
+ndbd[2]=10.95.109.196
+
+ndb_mgmd[1]=10.95.109.216
+ndb_mgmd[2]=10.95.109.217
+
+BackupDirName="backup/BACKUP"
+
