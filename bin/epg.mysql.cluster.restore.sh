@@ -27,14 +27,20 @@ command_ndbd="service ${command_ndbd} restart-initial"
 command_restar_ndbd="sudo ${command_ndbd}"
 sudo_status=$(sudo -l | tr '\n|\r' ' ' | sed 's/^.*User /User /;s/  */ /g' | grep -i "${user_name}")
 no_passwd_check=0
-
 test `echo ${sudo_status} | grep "(ALL) NOPASSWD: ALL" | wc -l ` -gt 0  && no_passwd_check=1
 
 test $check_is_root -eq 1 && command_restar_ndbd="${command_ndbd}"
 
 
+if [ ${no_passwd_check} -eq 1 ]
+then 
+	add_sudo="sudo ";
+else 
+	add_sudo="";
+fi 
+
 logit "Root check : ${check_is_root}"
-logit "Sudo  check : ${sudo_status}"
+logit "Sudo check : ${sudo_status}"
 logit "No Passwd sudo check : ${no_passwd_check}"
 logit "Got ndbd sercice restart command to be run by user $user_name : ${command_restar_ndbd}"
 
@@ -49,10 +55,10 @@ fi
 
 
 # get the available active IPs:
-local_ip_array=$(ifconfig  | grep "inet addr:" | grep -v grep | awk '{print $2}' | sed 's/^addr://')
+local_ip_array=$(${add_sudo}ifconfig  | grep "inet addr:" | grep -v grep | awk '{print $2}' | sed 's/^addr://')
 
 # get the ndbd local ID 
-data=$(ndb_config -c ${ndb_mgmd[1]},${ndb_mgmd[2]} --type=ndbd --query=id,host,datadir -f ' ' -r '\n') 
+data=$(${add_sudo}ndb_config -c ${ndb_mgmd[1]},${ndb_mgmd[2]} --type=ndbd --query=id,host,datadir -f ' ' -r '\n') 
 
 
 echo "${data}" | \
@@ -89,7 +95,7 @@ logit "got backupDir : ${backupDir}";
 # choose the backup 
 while [ 1  ]
 do 
-        read  -r -p "$(date)::[${HOSTNAME}] : Do you want to choose particular backup forder : Yes/No [y/n]"  choice
+        read  -r -p "$(date)::[${HOSTNAME}] : Do you want to choose ANOTHER backup forder : Yes/No [y/n]"  choice
         if [ "$choice" != "" ]
         then
 		case $choice in
@@ -182,10 +188,13 @@ if [ -d "${NDB_BACKUP_DIR}" ]
 then
 	logit "We are about to proceed with the restore of the backup at ${NDB_BACKUP_DIR}:  $(${add_sudo}ls -lrth ${NDB_BACKUP_DIR})"
         logit "Checking the backup consistency:"
-        ${add_sudo}ndb_print_backup_file "${NDB_BACKUP_LOG}"
+        NDB_BACKUP_STATUS=$(${add_sudo}ndb_print_backup_file "${NDB_BACKUP_LOG}" | grep -i "NDBBCKUP")
+	test `echo ${NDB_BACKUP_STATUS} | wc -l ` -eq 0 && logit "${NDB_BACKUP_LOG} is NOT NDB consistane Backup file!" && exit 0
+	echo "${NDB_BACKUP_STATUS}"
 else 
         logit "ERROR : Missing NDB BACKUP directory ${NDB_BACKUP_DIR}!"
 fi
+
 
 # checking the available API nodes :
 logit "Checking the available API nodes:"
@@ -211,6 +220,6 @@ do
         logit "${add_sudo}ndb_restores -c ${API_NODE_IP} -m -b ${NDB_BACKUP_NAME} -n ${API_NODE_ID} -r ${NDB_BACKUP_DIR}"
 done
         logit "Exiting the single user more:"
-        logit "${add_sudo}ndb_mgms --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'exit single user mode'"
+        logit "${add_sudo}ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'exit single user mode'"
 
 
