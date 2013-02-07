@@ -25,11 +25,18 @@ user_name=$(id -nu)
 command_ndbd=$(chkconfig --list| grep ndbd | awk '{print $1}')
 command_ndbd="service ${command_ndbd} restart-initial"
 command_restar_ndbd="sudo ${command_ndbd}"
-test $check_is_root && command_restar_ndbd="${command_ndbd}"
+sudo_status=$(sudo -l | tr '\n|\r' ' ' | sed 's/^.*User /User /;s/  */ /g' | grep -i "${user_name}")
+no_passwd_check=0
+
+test `echo ${sudo_status} | grep "(ALL) NOPASSWD: ALL" | wc -l ` -gt 0  && no_passwd_check=1
+
+test $check_is_root -eq 1 && command_restar_ndbd="${command_ndbd}"
+
 
 logit "Root check : ${check_is_root}"
-
-logit "Got restart command to be run by user $user_name : ${command_restar_ndbd}"
+logit "Sudo  check : ${sudo_status}"
+logit "No Passwd sudo check : ${no_passwd_check}"
+logit "Got ndbd sercice restart command to be run by user $user_name : ${command_restar_ndbd}"
 
 
 if [ -f "${CONF_FILE}" ]
@@ -37,7 +44,7 @@ then
         source "${CONF_FILE}"
 else 
         logit "Missing config file ${CONF_FILE} !  Exiting now."
-        #exit 0
+        exit 0
 fi
 
 
@@ -59,7 +66,7 @@ do
                         continue;
                 fi
                 nodeID=${dd%% *};
-                backupDir=${dd##* }/${BackupDirName};
+                backupDir=${dd##* }${BackupDirName};
                 #logit "break on IP ${IP}";
                 #logit "got temp IP ${IP}";
                 #logit "got temp nodeID : ${nodeID}";
@@ -101,7 +108,7 @@ do
 				logit "NDB_BACKUP_NAME : ${NDB_BACKUP_NAME}" 
 				logit "NDB_BACKUP_LOG : ${NDB_BACKUP_LOG}" 
 				#logit "We are about to proceed with the restore of the backup at ${NDB_BACKUP_DIR}:  $(ls -lrth ${NDB_BACKUP_DIR})"
-				break;
+				break 2;
 			else 
 				logit "We can not find the backup forder of ${chosenDIR}"
 				echo ""
@@ -119,13 +126,25 @@ do
         fi
 done
 
+# check read permissions at backupDir
+add_sudo="";
+logit "Cheking the read permissions of ${backupDir}.."
+if [ ! -r "${backupDir}" ]
+then 
+	logit "User ${user_name} can not read the backup directory of ${backupDir}!";
+	logit "Switching to sudo .."
+	if [ ${no_passwd_check} -eq 0 ]
+	then 
+		logit "User ${user_name} can not read the backup directory of ${backupDir} with sudo neither!";
+		exit 0;
+	else 
+		add_sudo="sudo "
+	fi 
+fi 
 
-
-
- 
 if [ -d "${backupDir}" ]
 then
-ls -1rt "${backupDir}/" |  while read crap;do logit "Found backup local backup of ndb_mgmd id ${nodeID}::${IP} : [$crap]";done
+	${add_sudo}ls -1rt "${backupDir}/" |  while read crap;do logit "Found backup local backup of ndb_mgmd id ${nodeID}::${IP} : [$crap]";done
 fi
 
 while [ 1  ]
@@ -133,31 +152,44 @@ do
         read  -r -p "$(date)::[${HOSTNAME}] : Please choose backup to restore or hit CTRL+C to terminate..."  paused
         if [ "$paused" != ""  -a -d "${backupDir}/${paused}" ]
         then
-                echo "";
                 NDB_BACKUP_NUMBER=${paused/*-/}
                 NDB_BACKUP_DIR="${backupDir}/${paused}"
                 NDB_BACKUP_LOG="${backupDir}/${paused}/${paused}.${nodeID}.log"
-                logit "We are about to proceed with the restore of the backup at ${NDB_BACKUP_DIR}:  $(ls -lrth ${NDB_BACKUP_DIR})"
                 break;
         else 
                 echo ""
         fi
 done
 
+add_sudo="";
+logit "Cheking the read permissions of ${NDB_BACKUP_DIR}.."
+if [ ! -r "${NDB_BACKUP_DIR}" ]
+then 
+	logit "User ${user_name} can not read the backup directory of ${NDB_BACKUP_DIR}!";
+	logit "Switching to sudo .."
+	if [ ${no_passwd_check} -eq 0 ]
+	then 
+		logit "User ${user_name} can not read the backup directory of ${NDB_BACKUP_DIR}!";
+		exit 0;
+	else 
+		add_sudo="sudo ";
+	fi 
+fi 
 
 
 # checking the backup consistency:
 if [ -d "${NDB_BACKUP_DIR}" ]
 then
+	logit "We are about to proceed with the restore of the backup at ${NDB_BACKUP_DIR}:  $(${add_sudo}ls -lrth ${NDB_BACKUP_DIR})"
         logit "Checking the backup consistency:"
-        ndb_print_backup_file "${NDB_BACKUP_LOG}"
+        ${add_sudo}ndb_print_backup_file "${NDB_BACKUP_LOG}"
 else 
         logit "ERROR : Missing NDB BACKUP directory ${NDB_BACKUP_DIR}!"
 fi
 
 # checking the available API nodes :
 logit "Checking the available API nodes:"
-api_data=$(ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'show' | sed  '/^\[mysqld(API)\]/,$!d;/^ *$/d')
+api_data=$(${add_sudo}ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'show' | sed  '/^\[mysqld(API)\]/,$!d;/^ *$/d')
 echo "${api_data}"
 #get the first node : 
 echo "${api_data}" | sed  '/^\[mysqld(API)\]/d' | \
@@ -166,19 +198,19 @@ do
         API_NODE_ID=${API_NODE_ID/*=/}
         # set the API node in single user more :
         logit "Setting the API node [${API_NODE_ID}]"
-        logit "ndb_mgms --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'enter single user mode ${API_NODE_ID}'" 
+        logit "${add_sudo}ndb_mgms --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'enter single user mode ${API_NODE_ID}'" 
         logit "Cheking the status of ndbd id ${nodeID}"
         # logit "ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'show' | grep "^id=$nodeID" | grep "@${IP}""
-        status=$(ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'show' | grep "^id=$nodeID" | grep "@${IP}")
-        logit "ndbd id ${nodeID} status : ${status}"
+        status=$(${add_sudo}ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'show' | grep "^id=$nodeID" | grep "@${IP}")
+        logit "${add_sudo}ndbd id ${nodeID} status : ${status}"
 #       "id=4    @10.95.109.196  (mysql-5.5.29 ndb-7.2.10, single user mode"
-	logit "Restarting the ndbd id ${nodeID} with initial switch"
-	logit ""
+	logit "Restarting the ndbd id ${nodeID} with initial switch via : ${command_restar_ndbd}"
+	logit "${command_restar_ndbd}"
         logit "In case we have single user mode enabled at ndbd node id ${nodeID} at IP ${IP} we executring the restore"
 	
-        logit "ndb_restores -c ${API_NODE_IP} -m -b ${NDB_BACKUP_NAME} -n ${API_NODE_ID} -r ${NDB_BACKUP_DIR}"
+        logit "${add_sudo}ndb_restores -c ${API_NODE_IP} -m -b ${NDB_BACKUP_NAME} -n ${API_NODE_ID} -r ${NDB_BACKUP_DIR}"
 done
         logit "Exiting the single user more:"
-        logit "ndb_mgms --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'exit single user mode'"
+        logit "${add_sudo}ndb_mgms --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'exit single user mode'"
 
 
