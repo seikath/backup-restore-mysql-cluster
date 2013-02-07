@@ -5,6 +5,7 @@
 
 SCRIPT_NAME=${0%.*}
 LOG_FILE="$(basename ${SCRIPT_NAME}).log"
+CONF_FILE=${SCRIPT_NAME}.conf
 
 time=` date +"%Y%m%d %H%M%S"`
 
@@ -28,13 +29,11 @@ bck_status=$?
 
 if [ $bck_status -gt 0 ]
 then
-  echo "ERROR on backup" >> ${LOG_FILE}
-  logger "Error on backup"
-  exit 1
+	logit "ERROR on backup"
+else 
+	logit "Backups end succesfully. "
 fi
 
-echo "Backups end succesfully. " >> ${LOG_FILE}
-echo >> ${LOG_FILE}
 
 
 # root@MADCJCNPcabeza1:[Thu Jan 17 12:52:37]:[~]$ tail backup.log
