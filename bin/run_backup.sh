@@ -8,9 +8,18 @@ LOG_FILE="$(basename ${SCRIPT_NAME}).log"
 
 time=` date +"%Y%m%d %H%M%S"`
 
+function logit () {
+    echo "$(date)::[${HOSTNAME}] : ${1}"
+    echo "$(date)::[${HOSTNAME}] : ${1}" >> "${LOG_FILE}"
+}
 
-
-### Main ###
+if [ -f "${CONF_FILE}" ]
+then
+        source "${CONF_FILE}"
+else 
+        logit "Missing config file ${CONF_FILE} !  Exiting now."
+        exit 0
+fi
 
 
 echo "Begin backup at: $time" >> ${LOG_FILE}
