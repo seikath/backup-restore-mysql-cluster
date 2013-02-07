@@ -102,21 +102,14 @@ do
 		"Yes" | "yes" | "y" | "Si" | "si" )
 		while [ 1  ]
 		do 
-			read  -r -p "$(date)::[${HOSTNAME}] : Please choose provide the full name of the backup forder or hit CTRL+C to terminate...: "  chosenDIR
+			read  -r -p "$(date)::[${HOSTNAME}] : Please provide the full name of the PARENT backup forder or hit CTRL+C to terminate...: "  chosenDIR
 			if [ -d "${chosenDIR}" ]
 			then
 				echo "";
-				NDB_BACKUP_NUMBER=${chosenDIR/*-/}
-				NDB_BACKUP_NAME=${chosenDIR##*/}
 				backupDir="${chosenDIR}"
-				NDB_BACKUP_LOG="${backupDir}/${NDB_BACKUP_NAME}.${nodeID}.log"
-				logit "NDB_BACKUP_NUMBER : ${NDB_BACKUP_NUMBER}" 
-				logit "NDB_BACKUP_NAME : ${NDB_BACKUP_NAME}" 
-				logit "NDB_BACKUP_LOG : ${NDB_BACKUP_LOG}" 
-				#logit "We are about to proceed with the restore of the backup at ${NDB_BACKUP_DIR}:  $(ls -lrth ${NDB_BACKUP_DIR})"
 				break 2;
 			else 
-				logit "We can not find the backup forder of ${chosenDIR}"
+				logit "We can not find the PARENT backup forder of ${chosenDIR}"
 				echo ""
 			fi
 		done
@@ -207,11 +200,13 @@ do
 # 	logit "CRAP : [${crap}]"
 # 	logit "${API_NODE_IP} $crap"
 #	continue;
+	API_NODE_ID=${API_NODE_ID/*=/}
 	logit "API_NODE_ID : [${API_NODE_ID}]"
 	if [ `echo "${API_NODE_IP} $crap" | grep "not connected" | wc -l` -gt 0 ] 
 	then 
 		logit "Skipping NOT CONNECTED API Node ID [${API_NODE_ID}] ${API_NODE_IP}{$crap}";
 	else
+		API_NODE_IP=${API_NODE_IP/@/}
 		logit "API_NODE_IP : [${API_NODE_IP}]"
 		API_NODE_ID=${API_NODE_ID/*=/}
 		# set the API node in single user more :
