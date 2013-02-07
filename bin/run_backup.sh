@@ -13,19 +13,19 @@ time=` date +"%Y%m%d %H%M%S"`
 ### Main ###
 
 
-echo "Begin backup at: $time" >> $FILE_LOG
-ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e "start backup" 2>&1 >> $FILE_LOG
+echo "Begin backup at: $time" >> ${LOG_FILE}
+ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e "start backup" 2>&1 >> ${LOG_FILE}
 bck_status=$?
 
 if [ $bck_status -gt 0 ]
 then
-  echo "ERROR on backup" >> $FILE_LOG
+  echo "ERROR on backup" >> ${LOG_FILE}
   logger "Error on backup"
   exit 1
 fi
 
-echo "Backups end succesfully. " >> $FILE_LOG
-echo >> $FILE_LOG
+echo "Backups end succesfully. " >> ${LOG_FILE}
+echo >> ${LOG_FILE}
 
 
 # root@MADCJCNPcabeza1:[Thu Jan 17 12:52:37]:[~]$ tail backup.log
