@@ -7,7 +7,6 @@ SCRIPT_NAME=${0%.*}
 LOG_FILE="$(basename ${SCRIPT_NAME}).log"
 CONF_FILE=${SCRIPT_NAME}.conf
 
-time=` date +"%Y%m%d %H%M%S"`
 
 function logit () {
     echo "$(date)::[${HOSTNAME}] : ${1}"
@@ -23,15 +22,14 @@ else
 fi
 
 
-echo "Begin backup at: $time" >> ${LOG_FILE}
+logit "Begin backup now."
 ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e "start backup" 2>&1 >> ${LOG_FILE}
-bck_status=$?
 
-if [ $bck_status -gt 0 ]
+if [ $? -gt 0 ]
 then
 	logit "ERROR on backup"
 else 
-	logit "Backups end succesfully. "
+	logit "Backups end succesfully!"
 fi
 
 

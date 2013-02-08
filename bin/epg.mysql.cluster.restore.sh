@@ -178,11 +178,9 @@ fi
 
 # check if there is backup log file in the backup directory 
 logit "Cheking the read permissions of ${NDB_BACKUP_LOG}.."
-if [ ! -f "${NDB_BACKUP_LOG}" ]
-then 
-	logit "Error : ${NDB_BACKUP_LOG} is missing at ${NDB_BACKUP_DIR} ! Exiting now.";
-	exit 0;
-fi
+logit "${add_sudo}ls ${NDB_BACKUP_LOG}  >> /dev/null 2>&1"
+${add_sudo}ls ${NDB_BACKUP_LOG}  >> /dev/null 2>&1
+test $? -gt 1 && logit "Error : ${NDB_BACKUP_LOG} is missing at ${NDB_BACKUP_DIR} ! Exiting now." && exit 0;
 
 # checking the backup consistency:
 if [ -d "${NDB_BACKUP_DIR}" ]
