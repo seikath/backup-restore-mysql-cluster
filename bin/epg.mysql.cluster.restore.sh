@@ -194,6 +194,43 @@ else
         logit "ERROR : Missing NDB BACKUP directory ${NDB_BACKUP_DIR}!"
 fi
 
+#  choose the restore type: full restore with drop database or table restore
+
+logit "Starting the restore type questionaire: "
+exit 0;
+while [ 1  ]
+do 
+        read  -r -p "$(date)::[${HOSTNAME}] :Please choose the restore type : FULL DATABASE restore including database [F] or TABLE [F]restore OR  hit CTRL+C to terminate... [F(ull)]/[T(able)]:  "  restore
+        if [ "$restore" != "" ]
+        then
+		case $restore in
+		"Full" | "F" | "f" )
+		while [ 1  ]
+		do 
+			read  -r -p "$(date)::[${HOSTNAME}] : Please provide the full name of the table including the database name like DATABASE.TABLE : "  tableName
+			tableName=${tableName}
+			if [ -d "${chosenDIR}" ]
+			then
+				echo "";
+				backupDir="${chosenDIR}"
+				break 2;
+			else 
+				logit "We can not find the PARENT backup forder of ${chosenDIR}"
+				echo ""
+			fi
+		done
+		;; 
+		"No" | "n" )
+		logit "Proceeding wit the condifured nightly backup.."
+		break;
+		;;
+		*)
+		logit "Empty imput, please provide the full name of the backup forder or hit CTRL+C to terminate:"
+		;;
+		esac
+        fi
+done
+
 
 # checking the available API nodes :
 logit "Checking the available API nodes:"
@@ -216,9 +253,17 @@ do
 		logit "Setting the API node [${API_NODE_ID}] in single user mode"
 		logit "${add_sudo}ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'enter single user mode ${API_NODE_ID}'" 
 		logit "Cheking the status of ndbd id ${nodeID}"
+		logit "ssh -q -nqtt -p22 is410@${ndbd[2]} '${command_restar_ndbd}'"
+
+# is410@epg-mysql-mem																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																								o1 /data/mysqlcluster  $ ssh -q -nqtt -p22 is410@10.95.109.195 'sudo su - -c "service ndbd_3  restart"'
+# Stopping ndbd :  failed
+# Starting ndbd --ndb-nodeid=3 --ndb-connectstring=10.95.109.216:1186,10.95.109.217:1186 : ok
+
+# sudo ndb_restore --include-tables=connect.auth_group -c 10.95.109.216   -b 8 -n 3 -r /data/mysqlcluster/backup/BACKUP/BACKUP-8
+
 		# logit "ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'show' | grep "^id=$nodeID" | grep "@${IP}""
 		status=$(${add_sudo}ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'show' | grep "^id={$nodeID}" | grep "@${IP}")
-		logit "${add_sudo}ndbd id ${nodeID} status : ${status}"
+		logit "Cluster status of ndbd id ${nodeID} : ${status}"
 		# "id=4    @10.95.109.196  (mysql-5.5.29 ndb-7.2.10, single user mode"
 		logit "Restarting the ndbd id ${nodeID} with initial switch via : ${command_restar_ndbd}"
 		logit "${command_restar_ndbd}"
