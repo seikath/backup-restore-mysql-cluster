@@ -60,7 +60,7 @@ local_ip_array=$(${add_sudo}ifconfig  | grep "inet addr:" | grep -v grep | awk '
 # get the ndbd local ID 
 data=$(${add_sudo}ndb_config -c ${ndb_mgmd[1]},${ndb_mgmd[2]} --type=ndbd --query=id,host,datadir -f ' ' -r '\n') 
 
-
+# get the recent data node ID, its IP and the data directory used
 echo "${data}" | \
 while read dd
 do
@@ -73,15 +73,13 @@ do
                 fi
                 nodeID=${dd%% *};
                 backupDir=${dd##* }${BackupDirName};
-                #logit "break on IP ${IP}";
-                #logit "got temp IP ${IP}";
-                #logit "got temp nodeID : ${nodeID}";
-                #logit "got temp backupDir : ${backupDir}";
                 echo -e "${IP}\t${nodeID}\t${backupDir}" > "${TMP_WORL_FILE}"
                 break 2;
         done  
 done
 
+
+# load the the recent data node ID, its IP and the data directory used
 if [ -f "${TMP_WORL_FILE}" ]
 then 
         read  IP nodeID backupDir < "${TMP_WORL_FILE}" 
@@ -91,11 +89,10 @@ logit "got IP ${IP}";
 logit "got nodeID : ${nodeID}";
 logit "got backupDir : ${backupDir}";
 
-# choose the backup 
-# choose the backup 
+# choose other backup available
 while [ 1  ]
 do 
-        read  -r -p "$(date)::[${HOSTNAME}] : Do you want to choose ANOTHER backup forder : Yes/No [y/n] :"  choice
+        read  -r -p "$(date)::[${HOSTNAME}] : Do you want to choose ANOTHER backup forder : Yes/No [y/n] : "  choice
         if [ "$choice" != "" ]
         then
 		case $choice in
@@ -141,16 +138,18 @@ then
 	fi 
 fi 
 
+# check the content of the backup directory provided 
 if [ -d "${backupDir}" ]
 then
-	${add_sudo}ls -1rt "${backupDir}/" |  while read crap; do logit "Found backup local backup of ndb_mgmd id ${nodeID}::${IP} : [$crap]";done
+	${add_sudo}ls -1rt "${backupDir}/" |  while read crap; do logit "Found possible local backup of ndb_mgmd id ${nodeID}::${IP} : [$crap]";done
 fi
 
 while [ 1  ]
 do 
-        read  -r -p "$(date)::[${HOSTNAME}] : Please choose backup to restore or hit CTRL+C to terminate...:  "  paused
+        read  -r -p "$(date)::[${HOSTNAME}] : Please choose local backup to restore or hit CTRL+C to terminate...:  "  paused
         if [ "$paused" != ""  -a -d "${backupDir}/${paused}" ]
         then
+		paused=${paused%%/}
                 NDB_BACKUP_NUMBER=${paused/*-/}
                 NDB_BACKUP_DIR="${backupDir}/${paused}"
                 NDB_BACKUP_LOG="${backupDir}/${paused}/${paused}.${nodeID}.log"
@@ -160,6 +159,8 @@ do
         fi
 done
 
+
+# check sudo availability 
 add_sudo="";
 logit "Cheking the read permissions of ${NDB_BACKUP_DIR}.."
 if [ ! -r "${NDB_BACKUP_DIR}" ]
@@ -168,13 +169,20 @@ then
 	logit "Switching to sudo .."
 	if [ ${no_passwd_check} -eq 0 ]
 	then 
-		logit "User ${user_name} can not read the backup directory of ${NDB_BACKUP_DIR}!";
+		logit "User ${user_name} is missing sudo and can not read the backup directory of ${NDB_BACKUP_DIR}!";
 		exit 0;
 	else 
 		add_sudo="sudo ";
 	fi 
 fi 
 
+# check if there is backup log file in the backup directory 
+logit "Cheking the read permissions of ${NDB_BACKUP_LOG}.."
+if [ ! -f "${NDB_BACKUP_LOG}" ]
+then 
+	logit "Error : ${NDB_BACKUP_LOG} is missing at ${NDB_BACKUP_DIR} ! Exiting now.";
+	exit 0;
+fi
 
 # checking the backup consistency:
 if [ -d "${NDB_BACKUP_DIR}" ]
@@ -197,9 +205,6 @@ echo "${api_data}"
 echo "${api_data}" | sed  '/^\[mysqld(API)\]/d' | \
 while read  API_NODE_ID API_NODE_IP crap 
 do
-# 	logit "CRAP : [${crap}]"
-# 	logit "${API_NODE_IP} $crap"
-#	continue;
 	API_NODE_ID=${API_NODE_ID/*=/}
 	logit "API_NODE_ID : [${API_NODE_ID}]"
 	if [ `echo "${API_NODE_IP} $crap" | grep "not connected" | wc -l` -gt 0 ] 
