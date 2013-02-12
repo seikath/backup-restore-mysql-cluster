@@ -96,7 +96,7 @@ do
         if [ "$choice" != "" ]
         then
 		case $choice in
-		"Yes" | "yes" | "y" | "Si" | "si" )
+		"Yes" | "yes" | "y" | "Si" | "si" | "Y")
 		while [ 1  ]
 		do 
 			read  -r -p "$(date)::[${HOSTNAME}] : Please provide the full name of the PARENT backup forder or hit CTRL+C to terminate...: "  chosenDIR
@@ -111,7 +111,7 @@ do
 			fi
 		done
 		;; 
-		"No" | "n" )
+		"No" | "n" | "N" )
 		logit "Proceeding wit the condifured nightly backup.."
 		break;
 		;;
@@ -178,7 +178,7 @@ fi
 
 # check if there is backup log file in the backup directory 
 logit "Cheking the read permissions of ${NDB_BACKUP_LOG}.."
-logit "${add_sudo}ls ${NDB_BACKUP_LOG}  >> /dev/null 2>&1"
+# works logit "${add_sudo}ls ${NDB_BACKUP_LOG}  >> /dev/null 2>&1"
 ${add_sudo}ls ${NDB_BACKUP_LOG}  >> /dev/null 2>&1
 test $? -gt 1 && logit "Error : ${NDB_BACKUP_LOG} is missing at ${NDB_BACKUP_DIR} ! Exiting now." && exit 0;
 
@@ -197,40 +197,44 @@ fi
 #  choose the restore type: full restore with drop database or table restore
 
 logit "Starting the restore type questionaire: "
-exit 0;
+databases_tables_data=$(${add_sudo}ndb_show_tables -c ${ndb_mgmd[1]},${ndb_mgmd[2]} -t 2 )
+
 while [ 1  ]
 do 
-        read  -r -p "$(date)::[${HOSTNAME}] :Please choose the restore type : FULL DATABASE restore including database [F] or TABLE [F]restore OR  hit CTRL+C to terminate... [F(ull)]/[T(able)]:  "  restore
+        read  -r -p "$(date)::[${HOSTNAME}] : Please choose the restore type : FULL DATABASE restore including database [F] or TABLE [T] to restore OR hit CTRL+C to terminate : "  restore
         if [ "$restore" != "" ]
         then
 		case $restore in
 		"Full" | "F" | "f" )
+		logit "Proceeding with the FULL DATABASE BACKUP. "
+		break;
+		;; 
+		"T" | "t" )
+		logit "Make sure the database.table is existing, otherwise the restore will fail."
 		while [ 1  ]
 		do 
-			read  -r -p "$(date)::[${HOSTNAME}] : Please provide the full name of the table including the database name like DATABASE.TABLE : "  tableName
-			tableName=${tableName}
-			if [ -d "${chosenDIR}" ]
+			logit "You may provide a comma separated list of tables to restore."
+			logit "Note the table name should include database name. Example: db1.t1,db3.t1"
+			logit "Fetching the "
+			read  -r -p "$(date)::[${HOSTNAME}] : Please provide the full name of the table(s) including the database(s) name like DATABASE.TABLE OR hit CTRL+C to terminate : "  tableName
+
+			if [ "${tableName}" != "" ]
 			then
-				echo "";
-				backupDir="${chosenDIR}"
+				logit "Proceeding with the single table BACKUP"
 				break 2;
 			else 
-				logit "We can not find the PARENT backup forder of ${chosenDIR}"
-				echo ""
+				logit "Empry table name to be restored!"
 			fi
-		done
-		;; 
-		"No" | "n" )
-		logit "Proceeding wit the condifured nightly backup.."
-		break;
+		done 
 		;;
 		*)
-		logit "Empty imput, please provide the full name of the backup forder or hit CTRL+C to terminate:"
+		logit ": Please choose the restore type : FULL DATABASE restore including database [F] or TABLE [T]restore OR hit CTRL+C to terminate... [F(ull)]/[T(able)]:  "
 		;;
 		esac
         fi
 done
 
+exit 0;
 
 # checking the available API nodes :
 logit "Checking the available API nodes:"
