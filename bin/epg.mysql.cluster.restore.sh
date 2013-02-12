@@ -217,27 +217,40 @@ do
 		logit "Make sure the database.table is existing, otherwise the restore will fail."
 		logit "Fetching the databases and its tables from the MySQL cluster ... "
 		# get the database.table list from the mysql cluster
-		data_ndb_databases_tables_online=$(${add_sudo}ndb_show_tables -c ${ndb_mgmd[1]},${ndb_mgmd[2]} -t 2 | awk  ' ($1 ~ /^[[:digit:]]/ && $7 !~ /^NDB\$BLOB/) {print $5"."$7}' | sort | uniq)
-		cntr=0
+		data_ndb_databases_tables_online=$(${add_sudo}ndb_show_tables -c ${ndb_mgmd[1]},${ndb_mgmd[2]} -t 2 | awk  ' ($1 ~ /^[[:digit:]]/ && $7 !~ /^NDB\$BLOB/) {print $5"."$7}' | sort | uniq)		cntr=0
+		# print a list of the db.tables available atm 
 		for DbNameAndTable  in ${data_ndb_databases_tables_online}
 		do 
 			((++cntr));
-			comma="  : "
+			dbArray[${cntr}]="${DbNameAndTable}";
+			comma="  : ";
 			test $cntr -gt 9 &&  comma=" : "
-			logit "[${cntr}]${comma}[${DbNameAndTable}]"
+			logit "[${cntr}]${comma}[${DbNameAndTable}]";
+			lastdbArray="${DbNameAndTable}";
 		done
 		# Get the users choice
 		while [ 1  ]
 		do 
-			logit "You may provide a comma separated list of tables to restore."
-			logit "Note the table name should include database name. Example: db1.t1,db3.t1"	
-			read  -r -p "$(date)::[${HOSTNAME}] : Please provide the full name of the table(s) including the database(s) name like DATABASE.TABLE OR hit CTRL+C to terminate : "  tableName
-
+			logit "You may provide a comma separated list of tables to restore.";
+			logit "Note the table name should include database name. Example: ${dbArray[1]},${lastdbArray}";
+			read  -r -p "$(date)::[${HOSTNAME}] : Please provide the full name of the table(s) including the database(s) name like DATABASE.TABLE OR hit CTRL+C to terminate : "  tableName;
 			if [ "${tableName}" != "" ]
 			then
 				# check the data consistency
-				IFS=', *' read -a array <<< "${tableName}"
-				logit "Proceeding with the BACKUP of the tables "
+				IFS=', *' read -a userTables <<< "${tableName}"
+				# checking the user data :
+				for idx in "${!userTables[@]}"
+				do
+					crap[idx]=1;
+					for DbNameAndTable  in ${data_ndb_databases_tables_online}
+					do 
+						test "${userTables[idx]}" == "${DbNameAndTable}" && crap[idx]=0 && break;
+						logit "[${cntr}]${comma}[${DbNameAndTable}] : Confirmed";
+					done
+					test crap[idx]=1 && logit "${userTables[idx]} is missing in the curent MySQL Cluster! Exiting now." && exit 0;
+				done
+			
+				logit "Proceeding with the BACKUP of the tables ${tableName}"
 				break 2;
 			else 
 				logit "Empry table name to be restored!"
