@@ -241,18 +241,27 @@ do
 				IFS=', ' read -a ArrayUserDbNames <<< "${userDbNames}"
 				# checking the user data consistency
 				logit "Checking the databases.."
+				DbNameOnly_restrore_string="";
 				for idx in "${!ArrayUserDbNames[@]}"
 				do
 					crap[$idx]=1;
+
 					for DbNameOnly  in ${data_ndb_databases_online}
 					do
-						logit "${ArrayUserDbNames[idx]} check vs ${DbNameOnly}"
-						test "${ArrayUserDbNames[idx]}" == "${DbNameOnly}" && crap[$idx]=0 && logit "[${ArrayUserDbNames[idx]}] : Confirmed" && break;
+						if [ "${ArrayUserDbNames[idx]}" == "${DbNameOnly}" ]
+						then 
+							commat="";
+							test "${DbNameOnly_restrore_string}" != "" && commat=",";
+							DbNameOnly_restrore_string="${DbNameOnly_restrore_string}${commat}${ArrayUserDbNames[idx]}";
+						 	crap[$idx]=0;
+							logit "[${ArrayUserDbNames[idx]}] : Confirmed";
+							logit "[DbNameOnly_restrore_string[${idx}]] : ${DbNameOnly_restrore_string}";
+							break;
+						fi
 					done
 					test ${crap[idx]} -eq 1 && logit "Database ${ArrayUserDbNames[idx]} is missing in the curent MySQL Cluster! Exiting now." && exit 0;
 				done
-			
-				logit "Proceeding with the BACKUP of the database(s) ${userDbNames}"
+				logit "Proceeding with the BACKUP of the database(s) ${DbNameOnly_restrore_string}"
 				break 2;
 			else 
 				logit "Empry database(s) name to be restored!"
