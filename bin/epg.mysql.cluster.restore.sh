@@ -205,12 +205,15 @@ logit "Starting the restore type questionaire: "
 
 while [ 1  ]
 do 
-        read  -r -p "$(date)::[${HOSTNAME}] : Please choose the restore type : FULL DATABASE restore including database [F] or TABLE [T] to restore OR hit CTRL+C to terminate : "  restore
+        read  -r -p "$(date)::[${HOSTNAME}] : Please choose the restore type : FULL MySQL cluster [M], DATABASE [D] or TABLE [T] to restore OR hit CTRL+C to terminate : "  restore
         if [ "$restore" != "" ]
         then
 		case $restore in
-		"Full" | "F" | "f" )
-		logit "Proceeding with the FULL DATABASE BACKUP. "
+		"M" | "m" )
+		logit "Proceeding with the FULL MySQL BACKUP restore."
+		break;
+		"D" | "d" )
+		logit "Proceeding with the FULL DATABASE BACKUP. To be done just like the table backup"
 		break;
 		;; 
 		"T" | "t" )
@@ -233,21 +236,21 @@ do
 		do 
 			logit "You may provide a comma separated list of tables to restore.";
 			logit "Note the table name should include database name. Example: ${dbArray[1]},${lastdbArray}";
-			read  -r -p "$(date)::[${HOSTNAME}] : Please provide the full name of the table(s) including the database(s) name like DATABASE.TABLE OR hit CTRL+C to terminate : "  tableName;
+			read  -r -p "$(date)::[${HOSTNAME}] : Please provide the full name of the table(s) OR hit CTRL+C to terminate : "  tableName;
 			if [ "${tableName}" != "" ]
 			then
-				# check the data consistency
+				# Read the user choices
 				IFS=', *' read -a userTables <<< "${tableName}"
-				# checking the user data :
+				# checking the user data consistency
+				logit "Checking the tables.."
 				for idx in "${!userTables[@]}"
 				do
-					crap[idx]=1;
+					crap[$idx]=1;
 					for DbNameAndTable  in ${data_ndb_databases_tables_online}
-					do 
-						test "${userTables[idx]}" == "${DbNameAndTable}" && crap[idx]=0 && break;
-						logit "[${cntr}]${comma}[${DbNameAndTable}] : Confirmed";
+					do
+						test "${userTables[idx]}" == "${DbNameAndTable}" && crap[$idx]=0 && logit "[${userTables[idx]}] : Confirmed" && break;
 					done
-					test crap[idx]=1 && logit "${userTables[idx]} is missing in the curent MySQL Cluster! Exiting now." && exit 0;
+					test ${crap[idx]} -eq 1 && logit "${userTables[idx]} is missing in the curent MySQL Cluster! Exiting now." && exit 0;
 				done
 			
 				logit "Proceeding with the BACKUP of the tables ${tableName}"
