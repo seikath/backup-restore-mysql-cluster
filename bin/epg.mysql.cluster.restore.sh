@@ -232,25 +232,27 @@ do
 		while [ 1  ]
 		do 
 			logit "You may provide a comma separated list of databases to restore.";
-			logit "Example: ${dbArrayName[1]},${lastdbArrayName}";
-			read  -r -p "$(date)::[${HOSTNAME}] : Please provide the DATABASE NAMES OR hit CTRL+C to terminate : "  DBNames;
-			if [ "${DBNames}" != "" ]
+			test ${#dbArrayName[@]} -gt 1 && logit "Example: ${dbArrayName[1]},${lastdbArrayName}";
+			test ${#dbArrayName[@]} -eq 1 && logit "Example: ${dbArrayName[1]}";
+			read  -r -p "$(date)::[${HOSTNAME}] : Please provide the DATABASE NAMES OR hit CTRL+C to terminate : "  userDbNames;
+			if [ "${userDbNames}" != "" ]
 			then
 				# Read the user choices
-				IFS=', *' read -a DBNames <<< "${userDbNames}"
+				IFS=', ' read -a ArrayUserDbNames <<< "${userDbNames}"
 				# checking the user data consistency
 				logit "Checking the databases.."
-				for idx in "${!userDbNames[@]}"
+				for idx in "${!ArrayUserDbNames[@]}"
 				do
 					crap[$idx]=1;
-					for DbNameOnly  in ${data_ndb_databases_tables_online}
+					for DbNameOnly  in ${data_ndb_databases_online}
 					do
-						test "${userDbNames[idx]}" == "${DbNameOnly}" && crap[$idx]=0 && logit "[${userDbNames[idx]}] : Confirmed" && break;
+						logit "${ArrayUserDbNames[idx]} check vs ${DbNameOnly}"
+						test "${ArrayUserDbNames[idx]}" == "${DbNameOnly}" && crap[$idx]=0 && logit "[${ArrayUserDbNames[idx]}] : Confirmed" && break;
 					done
-					test ${crap[idx]} -eq 1 && logit "Database ${userDbNames[idx]} is missing in the curent MySQL Cluster! Exiting now." && exit 0;
+					test ${crap[idx]} -eq 1 && logit "Database ${ArrayUserDbNames[idx]} is missing in the curent MySQL Cluster! Exiting now." && exit 0;
 				done
 			
-				logit "Proceeding with the BACKUP of the database(s) ${tableName}"
+				logit "Proceeding with the BACKUP of the database(s) ${userDbNames}"
 				break 2;
 			else 
 				logit "Empry database(s) name to be restored!"
@@ -336,10 +338,6 @@ do
 		logit "${add_sudo}ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'enter single user mode ${API_NODE_ID}'" 
 		logit "Cheking the status of ndbd id ${nodeID}"
 		logit "ssh -q -nqtt -p22 is410@${ndbd[2]} '${command_restar_ndbd}'"
-
-# is410@epg-mysql-mem																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																								o1 /data/mysqlcluster  $ ssh -q -nqtt -p22 is410@10.95.109.195 'sudo su - -c "service ndbd_3  restart"'
-# Stopping ndbd :  failed
-# Starting ndbd --ndb-nodeid=3 --ndb-connectstring=10.95.109.216:1186,10.95.109.217:1186 : ok
 
 # sudo ndb_restore --include-tables=connect.auth_group -c 10.95.109.216   -b 8 -n 3 -r /data/mysqlcluster/backup/BACKUP/BACKUP-8
 
