@@ -288,6 +288,7 @@ do
 			lastdbArray="${DbNameAndTable}";
 		done
 		# Get the users Database and table choice
+		DbNameTable_restrore_string="";
 		while [ 1  ]
 		do 
 			logit "You may provide a comma separated list of tables to restore.";
@@ -304,12 +305,20 @@ do
 					crap[$idx]=1;
 					for DbNameAndTable  in ${data_ndb_databases_tables_online}
 					do
-						test "${userTables[idx]}" == "${DbNameAndTable}" && crap[$idx]=0 && logit "[${userTables[idx]}] : Confirmed" && break;
+						if [ "${userTables[idx]}" == "${DbNameAndTable}" ]
+						then
+							commat="";
+							test "${DbNameTable_restrore_string}" != "" && commat=",";
+							DbNameTable_restrore_string="${DbNameTable_restrore_string}${commat}${userTables[idx]}";
+							crap[$idx]=0;
+							logit "[${userTables[idx]}] : Confirmed";
+							break;
+						fi 
 					done
 					test ${crap[idx]} -eq 1 && logit "Table ${userTables[idx]} is missing in the curent MySQL Cluster! Exiting now." && exit 0;
 				done
 			
-				logit "Proceeding with the BACKUP of the tables ${tableName}"
+				logit "Proceeding with the BACKUP of the tables ${DbNameTable_restrore_string}"
 				break 2;
 			else 
 				logit "Empry table name to be restored!"
