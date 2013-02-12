@@ -212,6 +212,7 @@ do
 		"M" | "m" )
 		logit "Proceeding with the FULL MySQL BACKUP restore."
 		break;
+		;; 
 		"D" | "d" )
 		logit "Proceeding with the FULL DATABASE BACKUP. To be done just like the table backup"
 		break;
