@@ -214,6 +214,49 @@ do
 		break;
 		;; 
 		"D" | "d" )
+		logit "Make sure the database is existing, otherwise the restore will fail."
+		logit "Fetching the databases from the MySQL cluster ... "
+		data_ndb_databases_online=$(${add_sudo}ndb_show_tables -c ${ndb_mgmd[1]},${ndb_mgmd[2]} -t 2 | awk '$1 ~ /^[[:digit:]]/ && $2 == "UserTable" && $3 == "Online"  {print $5}' | sort | uniq)
+		cntr=0;
+		for DbName  in ${data_ndb_databases_online}
+		do 
+			((++cntr));
+			dbArrayName[${cntr}]="${DbName}";
+			comma="  : ";
+			test $cntr -gt 9 &&  comma=" : "
+			logit "[${cntr}]${comma}[${DbName}]";
+			lastdbArrayName="${DbName}";
+		done
+
+		# Get the users Database choice
+		while [ 1  ]
+		do 
+			logit "You may provide a comma separated list of databases to restore.";
+			logit "Example: ${dbArrayName[1]},${lastdbArrayName}";
+			read  -r -p "$(date)::[${HOSTNAME}] : Please provide the DATABASE NAMES OR hit CTRL+C to terminate : "  DBNames;
+			if [ "${DBNames}" != "" ]
+			then
+				# Read the user choices
+				IFS=', *' read -a DBNames <<< "${userDbNames}"
+				# checking the user data consistency
+				logit "Checking the databases.."
+				for idx in "${!userDbNames[@]}"
+				do
+					crap[$idx]=1;
+					for DbNameOnly  in ${data_ndb_databases_tables_online}
+					do
+						test "${userDbNames[idx]}" == "${DbNameOnly}" && crap[$idx]=0 && logit "[${userDbNames[idx]}] : Confirmed" && break;
+					done
+					test ${crap[idx]} -eq 1 && logit "Database ${userDbNames[idx]} is missing in the curent MySQL Cluster! Exiting now." && exit 0;
+				done
+			
+				logit "Proceeding with the BACKUP of the database(s) ${tableName}"
+				break 2;
+			else 
+				logit "Empry database(s) name to be restored!"
+			fi
+		done 
+
 		logit "Proceeding with the FULL DATABASE BACKUP. To be done just like the table backup"
 		break;
 		;; 
@@ -223,6 +266,7 @@ do
 		# get the database.table list from the mysql cluster
 		data_ndb_databases_tables_online=$(${add_sudo}ndb_show_tables -c ${ndb_mgmd[1]},${ndb_mgmd[2]} -t 2 | awk  ' ($1 ~ /^[[:digit:]]/ && $7 !~ /^NDB\$BLOB/) {print $5"."$7}' | sort | uniq)		cntr=0
 		# print a list of the db.tables available atm 
+		cntr=0;
 		for DbNameAndTable  in ${data_ndb_databases_tables_online}
 		do 
 			((++cntr));
@@ -232,7 +276,7 @@ do
 			logit "[${cntr}]${comma}[${DbNameAndTable}]";
 			lastdbArray="${DbNameAndTable}";
 		done
-		# Get the users choice
+		# Get the users Database and table choice
 		while [ 1  ]
 		do 
 			logit "You may provide a comma separated list of tables to restore.";
@@ -251,7 +295,7 @@ do
 					do
 						test "${userTables[idx]}" == "${DbNameAndTable}" && crap[$idx]=0 && logit "[${userTables[idx]}] : Confirmed" && break;
 					done
-					test ${crap[idx]} -eq 1 && logit "${userTables[idx]} is missing in the curent MySQL Cluster! Exiting now." && exit 0;
+					test ${crap[idx]} -eq 1 && logit "Table ${userTables[idx]} is missing in the curent MySQL Cluster! Exiting now." && exit 0;
 				done
 			
 				logit "Proceeding with the BACKUP of the tables ${tableName}"
