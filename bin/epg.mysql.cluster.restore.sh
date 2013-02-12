@@ -216,11 +216,17 @@ do
 		"T" | "t" )
 		logit "Make sure the database.table is existing, otherwise the restore will fail."
 		logit "Fetching the databases and its tables from the MySQL cluster ... "
+		# get the database.table list from the mysql cluster
 		data_ndb_databases_tables_online=$(${add_sudo}ndb_show_tables -c ${ndb_mgmd[1]},${ndb_mgmd[2]} -t 2 | awk  ' ($1 ~ /^[[:digit:]]/ && $7 !~ /^NDB\$BLOB/) {print $5"."$7}' | sort | uniq)
+		cntr=0
 		for DbNameAndTable  in ${data_ndb_databases_tables_online}
 		do 
-			logit "[${DbNameAndTable}]"
+			((++cntr));
+			comma="  : "
+			test $cntr -gt 9 &&  comma=" : "
+			logit "[${cntr}]${comma}[${DbNameAndTable}]"
 		done
+		# Get the users choice
 		while [ 1  ]
 		do 
 			logit "You may provide a comma separated list of tables to restore."
@@ -229,7 +235,9 @@ do
 
 			if [ "${tableName}" != "" ]
 			then
-				logit "Proceeding with the single table BACKUP"
+				# check the data consistency
+				IFS=', *' read -a array <<< "${tableName}"
+				logit "Proceeding with the BACKUP of the tables "
 				break 2;
 			else 
 				logit "Empry table name to be restored!"
