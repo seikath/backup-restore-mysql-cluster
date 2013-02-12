@@ -197,8 +197,12 @@ fi
 #  choose the restore type: full restore with drop database or table restore
 
 logit "Starting the restore type questionaire: "
-databases_tables_data=$(${add_sudo}ndb_show_tables -c ${ndb_mgmd[1]},${ndb_mgmd[2]} -t 2 )
+data_ndb_databases_and_tables=$(${add_sudo}ndb_show_tables -c ${ndb_mgmd[1]},${ndb_mgmd[2]} -t 2 )
+data_ndb_databases_online=$(echo "${data_ndb_databases_and_tables}" | awk '$1 ~ /^[[:digit:]]/ && $2 == "UserTable" && $3 == "Online"  {print $5}' | sort | uniq)
 
+#ndb_show_tables -c 10.95.109.216 -d "connect" -t 2 | awk -vdbname="connect" '($5 == dbname) && ($7 !~ /^NDB\$BLOB/) {print $0}'
+# print the available db.table :  ndb_show_tables -c 10.95.109.216  -t 2 | awk  ' ($1 ~ /^[[:digit:]]/ && $7 !~ /^NDB\$BLOB/) {print $5"."$7}' | sort
+data_ndb_databases_tables_online=$(${add_sudo}ndb_show_tables -c ${ndb_mgmd[1]},${ndb_mgmd[2]} -t 2 | awk  ' ($1 ~ /^[[:digit:]]/ && $7 !~ /^NDB\$BLOB/) {print $5"."$7}' | sort | uniq)
 while [ 1  ]
 do 
         read  -r -p "$(date)::[${HOSTNAME}] : Please choose the restore type : FULL DATABASE restore including database [F] or TABLE [T] to restore OR hit CTRL+C to terminate : "  restore
@@ -211,11 +215,17 @@ do
 		;; 
 		"T" | "t" )
 		logit "Make sure the database.table is existing, otherwise the restore will fail."
+		while read ``
 		while [ 1  ]
 		do 
 			logit "You may provide a comma separated list of tables to restore."
 			logit "Note the table name should include database name. Example: db1.t1,db3.t1"
 			logit "Fetching the "
+			while read 
+			do
+				
+			done
+		
 			read  -r -p "$(date)::[${HOSTNAME}] : Please provide the full name of the table(s) including the database(s) name like DATABASE.TABLE OR hit CTRL+C to terminate : "  tableName
 
 			if [ "${tableName}" != "" ]
