@@ -370,10 +370,20 @@ do
 		;;
 		"D" | "d" | "Database" | "DATABASE" )
 			logit "${add_sudo}ndb_restores  -c ${API_NODE_IP}  ${restoreStringInclude} -b ${NDB_BACKUP_NUMBER} -n ${nodeID} -r ${NDB_BACKUP_DIR}"
+			restore_result=$(${add_sudo}ndb_restore  -c ${API_NODE_IP}  ${restoreStringInclude} -b ${NDB_BACKUP_NUMBER} -n ${nodeID} -r "${NDB_BACKUP_DIR}" | tee -a "${LOG_FILE}")
+			what_to_see=$(echo ${restore_result} | sed '/^Processing data in table/d')
+			restore_status=$(echo ${restore_result} | grep "NDBT_ProgramExit: 0 - OK" | grep -v grep)
+			test "${restore_status}" != "" && logit "The restore was successful! detailed log at ${LOG_FILE}." && logit "Slackware4File!"
+			test "${restore_status}" == "" && logit "The restore FAILED! detailed log at ${LOG_FILE}."
+
 		;;
 		"T" | "t" )
-			logit "${add_sudo}ndb_restores  -c ${API_NODE_IP}  ${restoreStringInclude} -b ${NDB_BACKUP_NUMBER} -n ${nodeID} -r ${NDB_BACKUP_DIR}"
-			${add_sudo}ndb_restore  -c ${API_NODE_IP}  ${restoreStringInclude} -b ${NDB_BACKUP_NUMBER} -n ${nodeID} -r "${NDB_BACKUP_DIR}" | tee -a "${LOG_FILE}"
+			logit "Starting the restore process, please wait a bit .. "
+			restore_result=$(${add_sudo}ndb_restore  -c ${API_NODE_IP}  ${restoreStringInclude} -b ${NDB_BACKUP_NUMBER} -n ${nodeID} -r "${NDB_BACKUP_DIR}" | tee -a "${LOG_FILE}")
+			what_to_see=$(echo ${restore_result} | sed '/^Processing data in table/d')
+			restore_status=$(echo ${restore_result} | grep "NDBT_ProgramExit: 0 - OK" | grep -v grep)
+			test "${restore_status}" != "" && logit "The restore was successful! detailed log at ${LOG_FILE}." && logit "Slackware4File!"
+			test "${restore_status}" == "" && logit "The restore FAILED! detailed log at ${LOG_FILE}."
 		;;
 		*)
 			logit "Nothing to do here"
