@@ -205,7 +205,8 @@ do
         then
 		case $restore in
 		"F" | "f" | "FULL" | "Full" )
-		logit "Proceeding with the FULL MySQL BACKUP restore."
+		restoreStringInclude="";
+		logit "Proceeding with the FULL MySQL BACKUP restore.";
 		break;
 		;; 
 		"D" | "d" | "Database" | "DATABASE" )
@@ -289,7 +290,9 @@ do
 		while [ 1  ]
 		do 
 			logit "You may provide a comma separated list of tables to restore.";
-			logit "Note the table name should include database name. Example: ${dbArray[1]},${lastdbArray}";
+			test ${#dbArray[@]} -gt 1 && logit "Example: ${dbArray[1]},${lastdbArray}";
+			test ${#dbArray[@]} -eq 1 && logit "Example: ${dbArray[1]}";
+			#logit "Note the table name should include database name. Example: ${dbArray[1]},${lastdbArray}";
 			read  -r -p "$(date)::[${HOSTNAME}] : Please provide the full name of the table(s) OR hit CTRL+C to terminate : "  tableName;
 			if [ "${tableName}" != "" ]
 			then
@@ -314,7 +317,7 @@ do
 					done
 					test ${crap[idx]} -eq 1 && logit "Table ${userTables[idx]} is missing in the curent MySQL Cluster! Exiting now." && exit 0;
 				done
-			
+				restoreStringInclude="--include-tables=${DbNameTable_restrore_string}";
 				logit "Proceeding with the BACKUP of the tables ${DbNameTable_restrore_string}"
 				break 2;
 			else 
