@@ -356,6 +356,7 @@ do
 		# set the API node in single user more :
 		case $restore in
 		"F" | "f" | "FULL" | "Full" )
+			# Not Active, to be added finall stupid question "ARE YOU SURE?"
 			logit "ssh -q -nqtt -p22 ${user_name}@${ndbd[2]} '${command_restar_ndbd}' restart-initial"
 			logit "Cheking the status of ndbd id ${nodeID}"
 			logit "ssh -q -nqtt -p22 ${user_name}@${ndbd[2]} '${command_restar_ndbd} status'"
@@ -369,7 +370,7 @@ do
 			logit "${add_sudo}ndb_mgms --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'exit single user mode'"
 		;;
 		"D" | "d" | "Database" | "DATABASE" )
-			logit "${add_sudo}ndb_restores  -c ${API_NODE_IP}  ${restoreStringInclude} -b ${NDB_BACKUP_NUMBER} -n ${nodeID} -r ${NDB_BACKUP_DIR}"
+			logit "Starting the restore process for databases(s) ${DbNameOnly_restrore_string}, please wait a bit .. "
 			restore_result=$(${add_sudo}ndb_restore  -c ${API_NODE_IP}  ${restoreStringInclude} -b ${NDB_BACKUP_NUMBER} -n ${nodeID} -r "${NDB_BACKUP_DIR}" | tee -a "${LOG_FILE}")
 			what_to_see=$(echo ${restore_result} | sed '/^Processing data in table/d')
 			restore_status=$(echo ${restore_result} | grep "NDBT_ProgramExit: 0 - OK" | grep -v grep)
@@ -378,7 +379,7 @@ do
 
 		;;
 		"T" | "t" )
-			logit "Starting the restore process, please wait a bit .. "
+			logit "Starting the restore process for table(s) ${DbNameTable_restrore_string}, please wait a bit .. "
 			restore_result=$(${add_sudo}ndb_restore  -c ${API_NODE_IP}  ${restoreStringInclude} -b ${NDB_BACKUP_NUMBER} -n ${nodeID} -r "${NDB_BACKUP_DIR}" | tee -a "${LOG_FILE}")
 			what_to_see=$(echo ${restore_result} | sed '/^Processing data in table/d')
 			restore_status=$(echo ${restore_result} | grep "NDBT_ProgramExit: 0 - OK" | grep -v grep)
@@ -389,32 +390,10 @@ do
 			logit "Nothing to do here"
 		;;
 		esac
-		#logit "Setting the API node [${API_NODE_ID}] in single user mode IF we go"
-		#logit "${add_sudo}ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'enter single user mode ${API_NODE_ID}'" 
-		#logit "Cheking the status of ndbd id ${nodeID}"
-		#logit "ssh -q -nqtt -p22 ${user_name}@${ndbd[2]} '${command_restar_ndbd}'"
-
-		# sudo ndb_restore --include-tables=connect.auth_group -c  ${ndb_mgmd[1]},${ndb_mgmd[2]}  -b 8 -n 3 -r /data/mysqlcluster/backup/BACKUP/BACKUP-8
-
-		# logit "ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'show' | grep "^id=$nodeID" | grep "@${IP}""
 		status=$(${add_sudo}ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'show' | grep "^id={$nodeID}" | grep "@${IP}")
 		logit "Cluster status of ndbd id ${nodeID} : ${status}"
-		# "id=4    @10.95.109.196  (mysql-5.5.29 ndb-7.2.10, single user mode"
-		#logit "Restarting the ndbd id ${nodeID} with initial switch via : ${command_restar_ndbd}"
-		#logit "${command_restar_ndbd}"
-		#logit "In case we have single user mode enabled at ndbd node id ${nodeID} at IP ${IP} we executing the restore"
-		#logit "${add_sudo}ndb_restores ${restoreStringInclude} -c ${API_NODE_IP} -m -b ${NDB_BACKUP_NUMBER} -n ${nodeID} -r ${NDB_BACKUP_DIR}"
-		break;
+		break; # we execute on the first acive API node
 	fi 
 done
 
 
-# test table restore initial 
-# mysql root@epg-mysql-head2:[Wed Feb 13 12:37:31 2013][connect]> delete from django_session;
-# Query OK, 628 rows affected, 2 warnings (0.26 sec)
-# 
-# mysql root@epg-mysql-head2:[Wed Feb 13 12:37:38 2013][connect]> delete from django_content_type;
-# Query OK, 11 rows affected, 2 warnings (0.00 sec)
-# 
-# mysql root@epg-mysql-head2:[Wed Feb 13 12:37:43 2013][connect]> delete from django_admin_log;
-# Query OK, 366 rows affected, 3 warnings (0.13 sec)
