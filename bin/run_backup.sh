@@ -23,8 +23,9 @@ fi
 
 
 logit "Begin backup now."
-ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e "start backup" 2>&1 >> ${LOG_FILE}
+logit "ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e \"start backup\""
 
+ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e "start backup" 2>&1 >> ${LOG_FILE}
 if [ $? -gt 0 ]
 then
 	logit "ERROR on backup"
