@@ -254,7 +254,6 @@ do
 							DbNameOnly_restrore_string="${DbNameOnly_restrore_string}${commat}${ArrayUserDbNames[idx]}";
 						 	crap[$idx]=0;
 							logit "[${ArrayUserDbNames[idx]}] : Confirmed";
-							logit "[DbNameOnly_restrore_string[${idx}]] : ${DbNameOnly_restrore_string}";
 							break;
 						fi
 					done
@@ -345,55 +344,51 @@ echo "${api_data}" | sed  '/^\[mysqld(API)\]/d' | \
 while read  API_NODE_ID API_NODE_IP crap 
 do
 	API_NODE_ID=${API_NODE_ID/*=/}
-	logit "API_NODE_ID : [${API_NODE_ID}]"
-	if [ `echo "${API_NODE_IP} $crap" | grep "not connected" | wc -l` -gt 0 ] 
-	then 
-		logit "Skipping NOT CONNECTED API Node ID [${API_NODE_ID}] ${API_NODE_IP}{$crap}";
-	else
-		API_NODE_IP=${API_NODE_IP/@/}
-		logit "API_NODE_IP : [${API_NODE_IP}]"
-		API_NODE_ID=${API_NODE_ID/*=/}
-		# set the API node in single user more :
-		case $restore in
-		"F" | "f" | "FULL" | "Full" )
-			# Not Active, to be added finall stupid question "ARE YOU SURE?"
-			logit "ssh -q -nqtt -p22 ${user_name}@${ndbd[2]} '${command_restar_ndbd}' restart-initial"
-			logit "Cheking the status of ndbd id ${nodeID}"
-			logit "ssh -q -nqtt -p22 ${user_name}@${ndbd[2]} '${command_restar_ndbd} status'"
-			logit "Setting the API node [${API_NODE_ID}] in single user"
-			# possible check if the user wants to clean up the mysql cluster DB like executing drop database ... create database
-			logit "${add_sudo}ndb_mgms --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'enter single user mode ${API_NODE_ID}'" 
-			status=$(${add_sudo}ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'show' | grep "^id={$nodeID}" | grep "@${IP}")
-			logit "Cluster status of ndbd id ${nodeID} : ${status}"
-			logit "${add_sudo}ndb_restores  -c ${API_NODE_IP}  ${restoreStringInclude} -b ${NDB_BACKUP_NUMBER} -n ${nodeID} -r ${NDB_BACKUP_DIR}"
-			logit "Exiting the single user more:"
-			logit "${add_sudo}ndb_mgms --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'exit single user mode'"
-		;;
-		"D" | "d" | "Database" | "DATABASE" )
-			logit "Starting the restore process for databases(s) ${DbNameOnly_restrore_string}, please wait a bit .. "
-			restore_result=$(${add_sudo}ndb_restore  -c ${API_NODE_IP}  ${restoreStringInclude} -b ${NDB_BACKUP_NUMBER} -n ${nodeID} -r "${NDB_BACKUP_DIR}" | tee -a "${LOG_FILE}")
-			what_to_see=$(echo ${restore_result} | sed '/^Processing data in table/d')
-			restore_status=$(echo ${restore_result} | grep "NDBT_ProgramExit: 0 - OK" | grep -v grep)
-			test "${restore_status}" != "" && logit "The restore was successful! detailed log at ${LOG_FILE}." && logit "Slackware4File!"
-			test "${restore_status}" == "" && logit "The restore FAILED! detailed log at ${LOG_FILE}."
-
-		;;
-		"T" | "t" )
-			logit "Starting the restore process for table(s) ${DbNameTable_restrore_string}, please wait a bit .. "
-			restore_result=$(${add_sudo}ndb_restore  -c ${API_NODE_IP}  ${restoreStringInclude} -b ${NDB_BACKUP_NUMBER} -n ${nodeID} -r "${NDB_BACKUP_DIR}" | tee -a "${LOG_FILE}")
-			what_to_see=$(echo ${restore_result} | sed '/^Processing data in table/d')
-			restore_status=$(echo ${restore_result} | grep "NDBT_ProgramExit: 0 - OK" | grep -v grep)
-			test "${restore_status}" != "" && logit "The restore was successful! detailed log at ${LOG_FILE}." && logit "Slackware4File!"
-			test "${restore_status}" == "" && logit "The restore FAILED! detailed log at ${LOG_FILE}."
-		;;
-		*)
-			logit "Nothing to do here"
-		;;
-		esac
+	logit "Procceding API_NODE_ID : [${API_NODE_ID}]"
+	test `echo "${API_NODE_IP} $crap" | grep "not connected" | wc -l` -gt 0 logit "Skipping NOT CONNECTED API Node ID [${API_NODE_ID}] ${API_NODE_IP}{$crap}" && continue;
+	API_NODE_IP=${API_NODE_IP/@/}
+	logit "API_NODE_IP : [${API_NODE_IP}]"
+	API_NODE_ID=${API_NODE_ID/*=/}
+	# set the API node in single user more :
+	case $restore in
+	"F" | "f" | "FULL" | "Full" )
+		# Not Active, to be added finall stupid question "ARE YOU SURE?"
+		logit "ssh -q -nqtt -p22 ${user_name}@${ndbd[2]} '${command_restar_ndbd}' restart-initial"
+		logit "Cheking the status of ndbd id ${nodeID}"
+		logit "ssh -q -nqtt -p22 ${user_name}@${ndbd[2]} '${command_restar_ndbd} status'"
+		logit "Setting the API node [${API_NODE_ID}] in single user"
+		# possible check if the user wants to clean up the mysql cluster DB like executing drop database ... create database
+		logit "${add_sudo}ndb_mgms --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'enter single user mode ${API_NODE_ID}'" 
 		status=$(${add_sudo}ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'show' | grep "^id={$nodeID}" | grep "@${IP}")
 		logit "Cluster status of ndbd id ${nodeID} : ${status}"
-		break; # we execute on the first acive API node
-	fi 
+		logit "${add_sudo}ndb_restores  -c ${API_NODE_IP}  ${restoreStringInclude} -b ${NDB_BACKUP_NUMBER} -n ${nodeID} -r ${NDB_BACKUP_DIR}"
+		logit "Exiting the single user more:"
+		logit "${add_sudo}ndb_mgms --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'exit single user mode'"
+	;;
+	"D" | "d" | "Database" | "DATABASE" )
+		logit "Starting the restore process for databases(s) ${DbNameOnly_restrore_string}, please wait a bit .. "
+		restore_result=$(${add_sudo}ndb_restore  -c ${API_NODE_IP}  ${restoreStringInclude} -b ${NDB_BACKUP_NUMBER} -n ${nodeID} -r "${NDB_BACKUP_DIR}" | tee -a "${LOG_FILE}")
+		what_to_see=$(echo ${restore_result} | sed '/^Processing data in table/d')
+		restore_status=$(echo ${restore_result} | grep "NDBT_ProgramExit: 0 - OK" | grep -v grep)
+		test "${restore_status}" != "" && logit "The restore was successful! detailed log at ${LOG_FILE}." && logit "Slackware4File!"
+		test "${restore_status}" == "" && logit "The restore FAILED! detailed log at ${LOG_FILE}."
+
+	;;
+	"T" | "t" )
+		logit "Starting the restore process for table(s) ${DbNameTable_restrore_string}, please wait a bit .. "
+		restore_result=$(${add_sudo}ndb_restore  -c ${API_NODE_IP}  ${restoreStringInclude} -b ${NDB_BACKUP_NUMBER} -n ${nodeID} -r "${NDB_BACKUP_DIR}" | tee -a "${LOG_FILE}")
+		what_to_see=$(echo ${restore_result} | sed '/^Processing data in table/d')
+		restore_status=$(echo ${restore_result} | grep "NDBT_ProgramExit: 0 - OK" | grep -v grep)
+		test "${restore_status}" != "" && logit "The restore was successful! detailed log at ${LOG_FILE}." && logit "Slackware4File!"
+		test "${restore_status}" == "" && logit "The restore FAILED! detailed log at ${LOG_FILE}."
+	;;
+	*)
+		logit "Nothing to do here"
+	;;
+	esac
+	status=$(${add_sudo}ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'show' | grep "^id={$nodeID}" | grep "@${IP}")
+	logit "Cluster status of ndbd id ${nodeID} : ${status}"
+	break; # we execute on the first acive API node
 done
 
 
