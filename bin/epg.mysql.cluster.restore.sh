@@ -3,6 +3,7 @@
 # is410@epg-mysql-memo1:~/bin/epg.mysql.cluster.restore.sh
 # moved to bitbucket : 2013-02-06.15.26.48
 
+# So far on RHEL .. porting to other distors after its done for RHEL 
 
 SCRIPT_NAME=${0%.*}
 LOG_FILE="$(basename ${SCRIPT_NAME}).log"
@@ -85,9 +86,9 @@ then
         read  IP nodeID backupDir < "${TMP_WORL_FILE}" 
 fi
 
-logit "got IP ${IP}";
-logit "got nodeID : ${nodeID}";
-logit "got backupDir : ${backupDir}";
+logit "got Local machine IP ${IP}";
+logit "got Local machine MySQL cluster nodeID : ${nodeID}";
+logit "got  MySQL cluster backup Dir : ${backupDir}";
 
 # choose other backup available
 while [ 1  ]
@@ -178,7 +179,6 @@ fi
 
 # check if there is backup log file in the backup directory 
 logit "Cheking the read permissions of ${NDB_BACKUP_LOG}.."
-# works logit "${add_sudo}ls ${NDB_BACKUP_LOG}  >> /dev/null 2>&1"
 ${add_sudo}ls ${NDB_BACKUP_LOG}  >> /dev/null 2>&1
 test $? -gt 1 && logit "Error : ${NDB_BACKUP_LOG} is missing at ${NDB_BACKUP_DIR} ! Exiting now." && exit 0;
 
@@ -195,14 +195,9 @@ else
 fi
 
 #  choose the restore type: full restore with drop database or table restore
-
 logit "Starting the restore type questionaire: "
-#data_ndb_databases_and_tables=$(${add_sudo}ndb_show_tables -c ${ndb_mgmd[1]},${ndb_mgmd[2]} -t 2 )
-#data_ndb_databases_online=$(echo "${data_ndb_databases_and_tables}" | awk '$1 ~ /^[[:digit:]]/ && $2 == "UserTable" && $3 == "Online"  {print $5}' | sort | uniq)
 
-#ndb_show_tables -c 10.95.109.216 -d "connect" -t 2 | awk -vdbname="connect" '($5 == dbname) && ($7 !~ /^NDB\$BLOB/) {print $0}'
-# print the available db.table :  ndb_show_tables -c 10.95.109.216  -t 2 | awk  ' ($1 ~ /^[[:digit:]]/ && $7 !~ /^NDB\$BLOB/) {print $5"."$7}' | sort
-
+restoreStringInclude="";
 while [ 1  ]
 do 
         read  -r -p "$(date)::[${HOSTNAME}] : Please choose the restore type : FULL MySQL cluster [F], DATABASE [D] or TABLE [T] to restore OR hit CTRL+C to terminate : "  restore
@@ -216,6 +211,7 @@ do
 		"D" | "d" | "Database" | "DATABASE" )
 		logit "Make sure the database is existing, otherwise the restore will fail."
 		logit "Fetching the databases from the MySQL cluster ... "
+		# Fetch the databases from the MySQL Cluster : 
 		data_ndb_databases_online=$(${add_sudo}ndb_show_tables -c ${ndb_mgmd[1]},${ndb_mgmd[2]} -t 2 | awk '$1 ~ /^[[:digit:]]/ && $2 == "UserTable" && $3 == "Online"  {print $5}' | sort | uniq)
 		cntr=0;
 		for DbName  in ${data_ndb_databases_online}
@@ -262,6 +258,7 @@ do
 					test ${crap[idx]} -eq 1 && logit "Database ${ArrayUserDbNames[idx]} is missing in the curent MySQL Cluster! Exiting now." && exit 0;
 				done
 				logit "Proceeding with the BACKUP of the database(s) ${DbNameOnly_restrore_string}"
+				restoreStringInclude="--include-databases=${DbNameOnly_restrore_string}";
 				break 2;
 			else 
 				logit "Empry database(s) name to be restored!"
