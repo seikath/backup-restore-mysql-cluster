@@ -40,12 +40,14 @@ else
 	add_sudo="";
 fi 
 
+# check initial credential 
 logit "UID check : ${user_name}"
 logit "Sudo check : ${sudo_status}"
-logit "No Passwd sudo check : ${no_passwd_check}"
+test ${no_passwd_check} -eq 1 && logit "No Passwd sudo check : Confirmed!"
+test ${no_passwd_check} -eq 0 && logit "No Passwd sudo check : NOTE -> Missing passwordless sudo!"
 logit "Got ndbd sercice restart command to be run by user ${user_name} : ${command_restar_ndbd}"
 
-
+# Loading configuraion 
 if [ -f "${CONF_FILE}" ]
 then
         source "${CONF_FILE}"
@@ -88,7 +90,7 @@ fi
 
 logit "got Local machine IP ${IP}";
 logit "got Local machine MySQL cluster nodeID : ${nodeID}";
-logit "got  MySQL cluster backup Dir : ${backupDir}";
+logit "got MySQL cluster backup Dir : ${backupDir}";
 
 # choose other backup available
 while [ 1  ]
@@ -205,7 +207,7 @@ do
         then
 		case $restore in
 		"F" | "f" | "FULL" | "Full" )
-		restoreStringInclude="";
+		restoreStringInclude="-m"; # restore MySQL cluster table metadata 
 		logit "Proceeding with the FULL MySQL BACKUP restore.";
 		break;
 		;; 
@@ -292,7 +294,6 @@ do
 			logit "You may provide a comma separated list of tables to restore.";
 			test ${#dbArray[@]} -gt 1 && logit "Example: ${dbArray[1]},${lastdbArray}";
 			test ${#dbArray[@]} -eq 1 && logit "Example: ${dbArray[1]}";
-			#logit "Note the table name should include database name. Example: ${dbArray[1]},${lastdbArray}";
 			read  -r -p "$(date)::[${HOSTNAME}] : Please provide the full name of the table(s) OR hit CTRL+C to terminate : "  tableName;
 			if [ "${tableName}" != "" ]
 			then
@@ -332,7 +333,8 @@ do
         fi
 done
 
-exit 0;
+logit "About to execute the restore procedure with the following options : [${restoreStringInclude}]."
+# exit 0;
 
 # checking the available API nodes :
 logit "Checking the available API nodes:"
@@ -352,25 +354,57 @@ do
 		logit "API_NODE_IP : [${API_NODE_IP}]"
 		API_NODE_ID=${API_NODE_ID/*=/}
 		# set the API node in single user more :
-		logit "Setting the API node [${API_NODE_ID}] in single user mode"
-		logit "${add_sudo}ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'enter single user mode ${API_NODE_ID}'" 
-		logit "Cheking the status of ndbd id ${nodeID}"
-		logit "ssh -q -nqtt -p22 ${user_name}@${ndbd[2]} '${command_restar_ndbd}'"
+		case $restore in
+		"F" | "f" | "FULL" | "Full" )
+			logit "ssh -q -nqtt -p22 ${user_name}@${ndbd[2]} '${command_restar_ndbd}' restart-initial"
+			logit "Cheking the status of ndbd id ${nodeID}"
+			logit "ssh -q -nqtt -p22 ${user_name}@${ndbd[2]} '${command_restar_ndbd} status'"
+			logit "Setting the API node [${API_NODE_ID}] in single user"
+			# possible check if the user wants to clean up the mysql cluster DB like executing drop database ... create database
+			logit "${add_sudo}ndb_mgms --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'enter single user mode ${API_NODE_ID}'" 
+			status=$(${add_sudo}ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'show' | grep "^id={$nodeID}" | grep "@${IP}")
+			logit "Cluster status of ndbd id ${nodeID} : ${status}"
+			logit "${add_sudo}ndb_restores  -c ${API_NODE_IP}  ${restoreStringInclude} -b ${NDB_BACKUP_NUMBER} -n ${nodeID} -r ${NDB_BACKUP_DIR}"
+			logit "Exiting the single user more:"
+			logit "${add_sudo}ndb_mgms --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'exit single user mode'"
+		;;
+		"D" | "d" | "Database" | "DATABASE" )
+			logit "${add_sudo}ndb_restores  -c ${API_NODE_IP}  ${restoreStringInclude} -b ${NDB_BACKUP_NUMBER} -n ${nodeID} -r ${NDB_BACKUP_DIR}"
+		;;
+		"T" | "t" )
+			logit "${add_sudo}ndb_restores  -c ${API_NODE_IP}  ${restoreStringInclude} -b ${NDB_BACKUP_NUMBER} -n ${nodeID} -r ${NDB_BACKUP_DIR}"
+			${add_sudo}ndb_restore  -c ${API_NODE_IP}  ${restoreStringInclude} -b ${NDB_BACKUP_NUMBER} -n ${nodeID} -r "${NDB_BACKUP_DIR}" | tee -a "${LOG_FILE}"
+		;;
+		*)
+			logit "Nothing to do here"
+		;;
+		esac
+		#logit "Setting the API node [${API_NODE_ID}] in single user mode IF we go"
+		#logit "${add_sudo}ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'enter single user mode ${API_NODE_ID}'" 
+		#logit "Cheking the status of ndbd id ${nodeID}"
+		#logit "ssh -q -nqtt -p22 ${user_name}@${ndbd[2]} '${command_restar_ndbd}'"
 
-# sudo ndb_restore --include-tables=connect.auth_group -c  ${ndb_mgmd[1]},${ndb_mgmd[2]}  -b 8 -n 3 -r /data/mysqlcluster/backup/BACKUP/BACKUP-8
+		# sudo ndb_restore --include-tables=connect.auth_group -c  ${ndb_mgmd[1]},${ndb_mgmd[2]}  -b 8 -n 3 -r /data/mysqlcluster/backup/BACKUP/BACKUP-8
 
 		# logit "ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'show' | grep "^id=$nodeID" | grep "@${IP}""
 		status=$(${add_sudo}ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'show' | grep "^id={$nodeID}" | grep "@${IP}")
 		logit "Cluster status of ndbd id ${nodeID} : ${status}"
 		# "id=4    @10.95.109.196  (mysql-5.5.29 ndb-7.2.10, single user mode"
-		logit "Restarting the ndbd id ${nodeID} with initial switch via : ${command_restar_ndbd}"
-		logit "${command_restar_ndbd}"
-		logit "In case we have single user mode enabled at ndbd node id ${nodeID} at IP ${IP} we executing the restore"
-		logit "${add_sudo}ndb_restores -c ${API_NODE_IP} -m -b ${NDB_BACKUP_NUMBER} -n ${nodeID} -r ${NDB_BACKUP_DIR}"
+		#logit "Restarting the ndbd id ${nodeID} with initial switch via : ${command_restar_ndbd}"
+		#logit "${command_restar_ndbd}"
+		#logit "In case we have single user mode enabled at ndbd node id ${nodeID} at IP ${IP} we executing the restore"
+		#logit "${add_sudo}ndb_restores ${restoreStringInclude} -c ${API_NODE_IP} -m -b ${NDB_BACKUP_NUMBER} -n ${nodeID} -r ${NDB_BACKUP_DIR}"
 		break;
 	fi 
 done
-        logit "Exiting the single user more:"
-        logit "${add_sudo}ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'exit single user mode'"
 
 
+# test table restore initial 
+# mysql root@epg-mysql-head2:[Wed Feb 13 12:37:31 2013][connect]> delete from django_session;
+# Query OK, 628 rows affected, 2 warnings (0.26 sec)
+# 
+# mysql root@epg-mysql-head2:[Wed Feb 13 12:37:38 2013][connect]> delete from django_content_type;
+# Query OK, 11 rows affected, 2 warnings (0.00 sec)
+# 
+# mysql root@epg-mysql-head2:[Wed Feb 13 12:37:43 2013][connect]> delete from django_admin_log;
+# Query OK, 366 rows affected, 3 warnings (0.13 sec)
