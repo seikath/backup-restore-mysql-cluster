@@ -39,10 +39,10 @@ else
 	add_sudo="";
 fi 
 
-logit "Root check : ${check_is_root}"
+logit "UID check : ${user_name}"
 logit "Sudo check : ${sudo_status}"
 logit "No Passwd sudo check : ${no_passwd_check}"
-logit "Got ndbd sercice restart command to be run by user $user_name : ${command_restar_ndbd}"
+logit "Got ndbd sercice restart command to be run by user ${user_name} : ${command_restar_ndbd}"
 
 
 if [ -f "${CONF_FILE}" ]
@@ -205,15 +205,15 @@ logit "Starting the restore type questionaire: "
 
 while [ 1  ]
 do 
-        read  -r -p "$(date)::[${HOSTNAME}] : Please choose the restore type : FULL MySQL cluster [M], DATABASE [D] or TABLE [T] to restore OR hit CTRL+C to terminate : "  restore
+        read  -r -p "$(date)::[${HOSTNAME}] : Please choose the restore type : FULL MySQL cluster [F], DATABASE [D] or TABLE [T] to restore OR hit CTRL+C to terminate : "  restore
         if [ "$restore" != "" ]
         then
 		case $restore in
-		"M" | "m" )
+		"F" | "f" | "FULL" | "Full" )
 		logit "Proceeding with the FULL MySQL BACKUP restore."
 		break;
 		;; 
-		"D" | "d" )
+		"D" | "d" | "Database" | "DATABASE" )
 		logit "Make sure the database is existing, otherwise the restore will fail."
 		logit "Fetching the databases from the MySQL cluster ... "
 		data_ndb_databases_online=$(${add_sudo}ndb_show_tables -c ${ndb_mgmd[1]},${ndb_mgmd[2]} -t 2 | awk '$1 ~ /^[[:digit:]]/ && $2 == "UserTable" && $3 == "Online"  {print $5}' | sort | uniq)
@@ -355,9 +355,9 @@ do
 		logit "Setting the API node [${API_NODE_ID}] in single user mode"
 		logit "${add_sudo}ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'enter single user mode ${API_NODE_ID}'" 
 		logit "Cheking the status of ndbd id ${nodeID}"
-		logit "ssh -q -nqtt -p22 is410@${ndbd[2]} '${command_restar_ndbd}'"
+		logit "ssh -q -nqtt -p22 ${user_name}@${ndbd[2]} '${command_restar_ndbd}'"
 
-# sudo ndb_restore --include-tables=connect.auth_group -c 10.95.109.216   -b 8 -n 3 -r /data/mysqlcluster/backup/BACKUP/BACKUP-8
+# sudo ndb_restore --include-tables=connect.auth_group -c  ${ndb_mgmd[1]},${ndb_mgmd[2]}  -b 8 -n 3 -r /data/mysqlcluster/backup/BACKUP/BACKUP-8
 
 		# logit "ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'show' | grep "^id=$nodeID" | grep "@${IP}""
 		status=$(${add_sudo}ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'show' | grep "^id={$nodeID}" | grep "@${IP}")
