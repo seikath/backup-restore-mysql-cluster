@@ -341,25 +341,24 @@ api_data=$(${add_sudo}ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e '
 echo "${api_data}"
 #get the first node : 
 echo "${api_data}" | sed  '/^\[mysqld(API)\]/d' | \
-while read  API_NODE_ID API_NODE_IP crap 
+while read  API_NODE_ID API_NODE_IP crap
 do
 	API_NODE_ID=${API_NODE_ID/*=/}
-	logit "Procceding API_NODE_ID : [${API_NODE_ID}]"
-	test `echo "${API_NODE_IP} $crap" | grep "not connected" | wc -l` -gt 0 logit "Skipping NOT CONNECTED API Node ID [${API_NODE_ID}] ${API_NODE_IP}{$crap}" && continue;
+	test `echo "${crap}" | grep "not connected" | wc -l` -gt 0 && logit "Skipping NOT CONNECTED API Node ID [${API_NODE_ID}] ${API_NODE_IP}{$crap}" && continue;
 	API_NODE_IP=${API_NODE_IP/@/}
-	logit "API_NODE_IP : [${API_NODE_IP}]"
+	logit "Procceding API_NODE_ID : [${API_NODE_ID}] at API_NODE_IP : [${API_NODE_IP}]"
 	API_NODE_ID=${API_NODE_ID/*=/}
 	# set the API node in single user more :
 	case $restore in
 	"F" | "f" | "FULL" | "Full" )
 		# Not Active, to be added finall stupid question "ARE YOU SURE?"
 		logit "ssh -q -nqtt -p22 ${user_name}@${ndbd[1]} '${command_restar_ndbd}' restart-initial"
+		Logit "DEBUG : have to find the restart command at the other node !"
 		logit "ssh -q -nqtt -p22 ${user_name}@${ndbd[2]} '${command_restar_ndbd}' restart-initial"
 		logit "Cheking the status of ndbd at  ${ndbd[1]}"
 		logit "ssh -q -nqtt -p22 ${user_name}@${ndbd[1]} '${command_restar_ndbd} status'"
 		logit "Cheking the status of ndbd at  ${ndbd[2]}"
 		logit "ssh -q -nqtt -p22 ${user_name}@${ndbd[2]} '${command_restar_ndbd} status'"
-
 		logit "Setting the API node [${API_NODE_ID}] in single user"
 		# possible check if the user wants to clean up the mysql cluster DB like executing drop database ... create database
 		logit "${add_sudo}ndb_mgms --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'enter single user mode ${API_NODE_ID}'" 
