@@ -63,7 +63,6 @@ logit "Got ndbd sercice restart command to be run by user ${user_name} : ${comma
 local_ip_array=$(${add_sudo}ifconfig  | grep "inet addr:" | grep -v grep | awk '{print $2}' | sed 's/^addr://')
 
 # get the ndbd local ID 
-# DEBUG logit "ndb_config -c ${ndb_mgmd[1]},${ndb_mgmd[2]} --type=ndbd --query=id,host,datadir -f ' ' -r '\n'"
 data=$(${add_sudo}ndb_config -c ${ndb_mgmd[1]},${ndb_mgmd[2]} --type=ndbd --query=id,host,datadir -f ' ' -r '\n') 
 
 # get the recent data node ID, its IP and the data directory used
@@ -73,21 +72,13 @@ while read nodeID  nodeIP backupDir
 do	
 	logit "Getting the ndbd start script name from ${user_name}@${nodeIP}"
 	command_ndbd[${nodeID}]=$(echo "${add_sudo}/sbin/chkconfig --list" | ${ssh_command} ${user_name}@${nodeIP}  | grep ndb | awk '{print $1}')
-	logit "command_ndbd[${nodeID}]=${command_ndbd[${nodeID}]}"
 	localHit=0;
-        #echo "${local_ip_array}" | \
-        #while read IP
 	for IP in ${local_ip_array}
         do
-		## DEBUG logit "${nodeIP} -> ${IP}";
 		test "${nodeIP}" == "${IP}" && localHit=1 && break;
         done  
         echo -e "${nodeIP}\t${nodeID}\t${backupDir}${LocalBackupDirName}\t${command_ndbd[${nodeID}]}\t${localHit}" >> "${TMP_WORL_FILE}"
-
 done
-
-
-#exit 0;
 
 # load the the recent data node ID, its IP and the data directory used
 if [ -f "${TMP_WORL_FILE}" ]
@@ -110,6 +101,7 @@ fi
 logit "got Local machine IP ${IP}";
 logit "got Local machine MySQL cluster nodeID : ${nodeID}";
 logit "got MySQL cluster backup Dir : ${backupDir}";
+
 # choose other backup available
 while [ 1  ]
 do 
