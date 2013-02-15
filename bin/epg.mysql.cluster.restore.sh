@@ -10,6 +10,14 @@ LOG_FILE="$(basename ${SCRIPT_NAME}).log"
 CONF_FILE=${SCRIPT_NAME}.conf
 TMP_WORL_FILE="/tmp/${HOSTNAME}.$(basename ${SCRIPT_NAME}).tmp"
 
+# Loading configuraion 
+if [ -f "${CONF_FILE}" ]
+then
+        source "${CONF_FILE}"
+else 
+        logit "Missing config file ${CONF_FILE} !  Exiting now."
+        exit 0
+fi
 
 # initialize the tmp file 
 test `echo "" >  "${TMP_WORL_FILE}"` && logit "${TMP_WORL_FILE} initialized!"
@@ -29,8 +37,9 @@ command_restar_ndbd="sudo ${command_ndbd}"
 sudo_status=$(sudo -l | tr '\n|\r' ' ' | sed 's/^.*User /User /;s/  */ /g' | grep -i "${user_name}")
 no_passwd_check=0
 test `echo ${sudo_status} | grep "(ALL) NOPASSWD: ALL" | wc -l ` -gt 0  && no_passwd_check=1
-
 test $check_is_root -eq 1 && command_restar_ndbd="${command_ndbd}"
+
+
 
 
 if [ ${no_passwd_check} -eq 1 ]
@@ -47,14 +56,7 @@ test ${no_passwd_check} -eq 1 && logit "No Passwd sudo check : Confirmed!"
 test ${no_passwd_check} -eq 0 && logit "No Passwd sudo check : NOTE -> Missing passwordless sudo!"
 logit "Got ndbd sercice restart command to be run by user ${user_name} : ${command_restar_ndbd}"
 
-# Loading configuraion 
-if [ -f "${CONF_FILE}" ]
-then
-        source "${CONF_FILE}"
-else 
-        logit "Missing config file ${CONF_FILE} !  Exiting now."
-        exit 0
-fi
+
 
 
 # get the available active IPs:
@@ -70,6 +72,7 @@ do
         echo "${local_ip_array}" | \
         while read IP
         do
+		command_ndbd[${IP}]=$(${ssh_command} ${user_name}@${IP} chkconfig --list| grep ndbd | awk '{print $1}')
                 if [  `echo ${dd} | grep -v grep | grep "${IP}" | wc -l ` -eq 0 ]
                 then
                         continue;
@@ -82,6 +85,33 @@ do
 done
 
 
+# put here the ssh key access to all the test of the ndb nodes 
+# use the ndb_mgmd config array or the active ndbd nodes on the ndb config 
+# for idx in "${!ndb_mgmd[@]}"
+# do
+# 	crap[$idx]=1;
+# 
+# 	for DbNameOnly  in ${data_ndb_databases_online}
+# 	do
+# 		if [ "${ArrayUserDbNames[idx]}" == "${DbNameOnly}" ]
+# 		then 
+# 			commat="";
+# 			test "${DbNameOnly_restrore_string}" != "" && commat=",";
+# 			DbNameOnly_restrore_string="${DbNameOnly_restrore_string}${commat}${ArrayUserDbNames[idx]}";
+# 			crap[$idx]=0;
+# 			logit "[${ArrayUserDbNames[idx]}] : Confirmed";
+# 			break;
+# 		fi
+# 	done
+# 	test ${crap[idx]} -eq 1 && logit "Database ${ArrayUserDbNames[idx]} is missing in the curent MySQL Cluster! Exiting now." && exit 0;
+# done
+
+
+
+exit 0;
+
+
+
 # load the the recent data node ID, its IP and the data directory used
 if [ -f "${TMP_WORL_FILE}" ]
 then 
@@ -91,7 +121,7 @@ fi
 logit "got Local machine IP ${IP}";
 logit "got Local machine MySQL cluster nodeID : ${nodeID}";
 logit "got MySQL cluster backup Dir : ${backupDir}";
-
+real_command_restar_ndbd[${IP}]="${command_restar_ndbd}"
 # choose other backup available
 while [ 1  ]
 do 
@@ -352,8 +382,24 @@ do
 	case $restore in
 	"F" | "f" | "FULL" | "Full" )
 		# Not Active, to be added finall stupid question "ARE YOU SURE?"
+
+
+# # getting the user ID, check sudo, ndbd restart command 
+# check_is_root=$(id | sed '/^uid=0/!d' | wc -l)
+# user_name=$(id -nu)
+# 
+# command_ndbd=$(chkconfig --list| grep ndbd | awk '{print $1}')
+# command_ndbd="service ${command_ndbd} restart-initial"
+# command_restar_ndbd="sudo ${command_ndbd}"
+# sudo_status=$(sudo -l | tr '\n|\r' ' ' | sed 's/^.*User /User /;s/  */ /g' | grep -i "${user_name}")
+# no_passwd_check=0
+# test `echo ${sudo_status} | grep "(ALL) NOPASSWD: ALL" | wc -l ` -gt 0  && no_passwd_check=1
+# 
+# test $check_is_root -eq 1 && command_restar_ndbd="${command_ndbd}"
+
+
 		logit "ssh -q -nqtt -p22 ${user_name}@${ndbd[1]} '${command_restar_ndbd}' restart-initial"
-		Logit "DEBUG : have to find the restart command at the other node !"
+		logit "DEBUG : have to find the restart command at the other node !"
 		logit "ssh -q -nqtt -p22 ${user_name}@${ndbd[2]} '${command_restar_ndbd}' restart-initial"
 		logit "Cheking the status of ndbd at  ${ndbd[1]}"
 		logit "ssh -q -nqtt -p22 ${user_name}@${ndbd[1]} '${command_restar_ndbd} status'"
@@ -375,7 +421,6 @@ do
 		restore_status=$(echo ${restore_result} | grep "NDBT_ProgramExit: 0 - OK" | grep -v grep)
 		test "${restore_status}" != "" && logit "The restore was successful! detailed log at ${LOG_FILE}." && logit "Slackware4File!"
 		test "${restore_status}" == "" && logit "The restore FAILED! detailed log at ${LOG_FILE}."
-
 	;;
 	"T" | "t" )
 		logit "Starting the restore process for table(s) ${DbNameTable_restrore_string}, please wait a bit .. "
