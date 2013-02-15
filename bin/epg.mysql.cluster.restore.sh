@@ -353,9 +353,13 @@ do
 	case $restore in
 	"F" | "f" | "FULL" | "Full" )
 		# Not Active, to be added finall stupid question "ARE YOU SURE?"
+		logit "ssh -q -nqtt -p22 ${user_name}@${ndbd[1]} '${command_restar_ndbd}' restart-initial"
 		logit "ssh -q -nqtt -p22 ${user_name}@${ndbd[2]} '${command_restar_ndbd}' restart-initial"
-		logit "Cheking the status of ndbd id ${nodeID}"
+		logit "Cheking the status of ndbd at  ${ndbd[1]}"
+		logit "ssh -q -nqtt -p22 ${user_name}@${ndbd[1]} '${command_restar_ndbd} status'"
+		logit "Cheking the status of ndbd at  ${ndbd[2]}"
 		logit "ssh -q -nqtt -p22 ${user_name}@${ndbd[2]} '${command_restar_ndbd} status'"
+
 		logit "Setting the API node [${API_NODE_ID}] in single user"
 		# possible check if the user wants to clean up the mysql cluster DB like executing drop database ... create database
 		logit "${add_sudo}ndb_mgms --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'enter single user mode ${API_NODE_ID}'" 
