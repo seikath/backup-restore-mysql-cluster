@@ -63,65 +63,53 @@ logit "Got ndbd sercice restart command to be run by user ${user_name} : ${comma
 local_ip_array=$(${add_sudo}ifconfig  | grep "inet addr:" | grep -v grep | awk '{print $2}' | sed 's/^addr://')
 
 # get the ndbd local ID 
+# DEBUG logit "ndb_config -c ${ndb_mgmd[1]},${ndb_mgmd[2]} --type=ndbd --query=id,host,datadir -f ' ' -r '\n'"
 data=$(${add_sudo}ndb_config -c ${ndb_mgmd[1]},${ndb_mgmd[2]} --type=ndbd --query=id,host,datadir -f ' ' -r '\n') 
 
 # get the recent data node ID, its IP and the data directory used
+# check the ndbd start-stop command name of all ndbd data nodes
 echo "${data}" | \
-while read dd
-do
-        echo "${local_ip_array}" | \
-        while read IP
+while read nodeID  nodeIP backupDir
+do	
+	logit "Getting the ndbd start script name from ${user_name}@${nodeIP}"
+	command_ndbd[${nodeID}]=$(echo "${add_sudo}/sbin/chkconfig --list" | ${ssh_command} ${user_name}@${nodeIP}  | grep ndb | awk '{print $1}')
+	logit "command_ndbd[${nodeID}]=${command_ndbd[${nodeID}]}"
+	localHit=0;
+        #echo "${local_ip_array}" | \
+        #while read IP
+	for IP in ${local_ip_array}
         do
-		command_ndbd[${IP}]=$(${ssh_command} ${user_name}@${IP} chkconfig --list| grep ndbd | awk '{print $1}')
-                if [  `echo ${dd} | grep -v grep | grep "${IP}" | wc -l ` -eq 0 ]
-                then
-                        continue;
-                fi
-                nodeID=${dd%% *};
-                backupDir=${dd##* }${BackupDirName};
-                echo -e "${IP}\t${nodeID}\t${backupDir}" > "${TMP_WORL_FILE}"
-                break 2;
+		## DEBUG logit "${nodeIP} -> ${IP}";
+		test "${nodeIP}" == "${IP}" && localHit=1 && break;
         done  
+        echo -e "${nodeIP}\t${nodeID}\t${backupDir}${LocalBackupDirName}\t${command_ndbd[${nodeID}]}\t${localHit}" >> "${TMP_WORL_FILE}"
+
 done
 
 
-# put here the ssh key access to all the test of the ndb nodes 
-# use the ndb_mgmd config array or the active ndbd nodes on the ndb config 
-# for idx in "${!ndb_mgmd[@]}"
-# do
-# 	crap[$idx]=1;
-# 
-# 	for DbNameOnly  in ${data_ndb_databases_online}
-# 	do
-# 		if [ "${ArrayUserDbNames[idx]}" == "${DbNameOnly}" ]
-# 		then 
-# 			commat="";
-# 			test "${DbNameOnly_restrore_string}" != "" && commat=",";
-# 			DbNameOnly_restrore_string="${DbNameOnly_restrore_string}${commat}${ArrayUserDbNames[idx]}";
-# 			crap[$idx]=0;
-# 			logit "[${ArrayUserDbNames[idx]}] : Confirmed";
-# 			break;
-# 		fi
-# 	done
-# 	test ${crap[idx]} -eq 1 && logit "Database ${ArrayUserDbNames[idx]} is missing in the curent MySQL Cluster! Exiting now." && exit 0;
-# done
-
-
-
-exit 0;
-
-
+#exit 0;
 
 # load the the recent data node ID, its IP and the data directory used
 if [ -f "${TMP_WORL_FILE}" ]
 then 
-        read  IP nodeID backupDir < "${TMP_WORL_FILE}" 
+	while read tmp_IP tmp_nodeID tmp_backupDir tmp_command_ndbd tmp_localHit
+	do
+		logit "${tmp_IP} ${tmp_nodeID} ${tmp_backupDir} ${tmp_command_ndbd} ${tmp_localHit}"
+		if [ ${tmp_localHit} -eq 1 ] 
+		then
+			IP="${tmp_IP}";
+			nodeID="${tmp_nodeID}";
+			backupDir="${tmp_backupDir}"
+		fi 
+		command_ndbd[${nodeID}]="${tmp_command_ndbd}"
+	done < "${TMP_WORL_FILE}"
+else
+	logit "Missing data collection at ${TMP_WORL_FILE}. Exiting no." && exit 0;	
 fi
 
 logit "got Local machine IP ${IP}";
 logit "got Local machine MySQL cluster nodeID : ${nodeID}";
 logit "got MySQL cluster backup Dir : ${backupDir}";
-real_command_restar_ndbd[${IP}]="${command_restar_ndbd}"
 # choose other backup available
 while [ 1  ]
 do 
@@ -172,6 +160,7 @@ then
 fi 
 
 # check the content of the backup directory provided 
+logit "DEBUG : check the content of the backup directory provided [${backupDir}]"
 if [ -d "${backupDir}" ]
 then
 	${add_sudo}ls -1rt "${backupDir}/" |  while read crap; do logit "Found possible local backup of ndb_mgmd id ${nodeID}::${IP} : [$crap]";done
