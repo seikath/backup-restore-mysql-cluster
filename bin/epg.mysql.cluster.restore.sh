@@ -363,7 +363,32 @@ do
 					done
 					test ${crap[idx]} -eq 1 && logit "Table ${userTables[idx]} is missing in the curent MySQL Cluster! Exiting now." && exit 0;
 				done
-				restoreStringInclude="--include-tables=${DbNameTable_restrore_string}";
+
+				# check if the DDL should be restored as well :
+				while [ 1  ]
+				do
+					read  -r -p "$(date)::[${HOSTNAME}] : Do you want the table metadata to be restored as well? Y/N : "  restoreDDL;
+					if [ "${restoreDDL}" != "" ]
+					then
+						case ${restoreDDL} in
+						"Y" | "y" | "yes" | "Yes" | "YES" )
+						logit "Including the DDLL/meta table data restore";
+						restoreStringInclude="-m --include-tables=${DbNameTable_restrore_string}";
+						break;
+						;;
+						"N" | "n" | "No" | "NO" | "Non" )
+						logit "Skipping the DDL/meta table data restore";
+						restoreStringInclude="--include-tables=${DbNameTable_restrore_string}";
+						break;
+						;;
+						*)
+						logit "Please choose [Y]es or [N]O!"
+						;;
+						esac
+					fi
+				done 
+
+				#restoreStringInclude="--include-tables=${DbNameTable_restrore_string}";
 				logit "Proceeding with the BACKUP of the tables ${DbNameTable_restrore_string}"
 				break 2;
 			else 
