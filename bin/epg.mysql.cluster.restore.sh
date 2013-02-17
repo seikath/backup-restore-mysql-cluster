@@ -505,6 +505,12 @@ do
 		then
 			logit "The restore FAILED due to missing/broken fields in a table! Detailed log at ${LOG_FILE}";
 			logit "We recommed full full restore with table metadata.";
+		elif [ "${what_to_see}" != "${what_to_see/Schema object with given name already exists/}" ]
+		then
+			logit "The restore FAILED due to attempt to create an exsisting table! Detailed log at ${LOG_FILE}";
+			logit "We recommed the following steps:";
+			logit "1. Restore without the table metadata OR";
+			logit "2. In case the step fails due to missing tables we reccomend FULL restore with dropping the database";
 		else
 			logit "The restore FAILED";
 		fi
@@ -524,7 +530,15 @@ do
 		elif [ "${what_to_see}" != "${what_to_see/Missing column/}" ]
 		then
 			logit "The restore FAILED due to missing/broken fields in a table! Detailed log at ${LOG_FILE}";
-			logit "We recommed full full restore with table metadata.";
+ 			logit "We recommed the following steps:";
+			logit "1. We recommed table restore with DDL/table metadata restore";
+			logit "2. In case the step fails due to existing tables we recomend FULL restore with dropping the database";
+		elif [ "${what_to_see}" != "${what_to_see/Schema object with given name already exists/}" ]
+		then
+			logit "The restore FAILED due to attempt to create an exsisting table! Detailed log at ${LOG_FILE}";
+			logit "We recommed the following steps:";
+			logit "1. Restore without the table metadata OR";
+			logit "2. In case the step fails due to missing tables we recomend FULL restore with dropping the database";
 		else
 			logit "The restore FAILED";
 		fi
