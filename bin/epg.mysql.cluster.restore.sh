@@ -369,7 +369,8 @@ do
 		logit "DEBUG : have to find the restart command at the other node !"
 		logit "ssh -q -nqtt -p22 ${user_name}@${ndbd[2]} '${command_restar_ndbd}' restart-initial"
 		logit "Cheking the status of ndbd at  ${ndbd[1]}"
-		logit "ssh -q -nqtt -p22 ${user_name}@${ndbd[1]} '${command_restar_ndbd} status'"
+		logit "${ssh_command} ${user_name}@${ndbd[1]} '${command_restar_ndbd} status'"
+		echo "${command_restar_ndbd} status" | ${ssh_command} ${user_name}@${ndbd[1]}
 		logit "Cheking the status of ndbd at  ${ndbd[2]}"
 		logit "ssh -q -nqtt -p22 ${user_name}@${ndbd[2]} '${command_restar_ndbd} status'"
 		logit "Setting the API node [${API_NODE_ID}] in single user"
