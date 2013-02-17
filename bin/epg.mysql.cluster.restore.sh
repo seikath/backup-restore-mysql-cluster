@@ -94,7 +94,7 @@ then
 			backupDir="${tmp_backupDir}"
 		fi 
 		command_ndbd[${nodeID}]="${tmp_command_ndbd}";
-		ndbd_data_id[$ndbd_cntr]="${tmp_nodeID}";
+		ndbd_data_node_id[$ndbd_cntr]="${tmp_nodeID}";
 		ndbd_data_IP[$ndbd_cntr]="${tmp_IP}";
 		ndbd_data_bckp_dir[$ndbd_cntr]="${tmp_backupDir}";
 		ndbd_data_cmd[$ndbd_cntr]="${tmp_command_ndbd}";
@@ -370,10 +370,69 @@ do
 	case $restore in
 	"F" | "f" | "FULL" | "Full" )
 		# loop again the data nodes 
-		logit "ndbd_data_id size=${#ndbd_data_id[@]}"
-		# resading the ndb data attay 
-		IFS=', ' read -a ArrayNDBData <<< "${ndbd_data_id}"
-		
+		ndbd_initial_status=1;
+		for idx in $(seq 0 $((${#ndbd_data_node_id[@]} - 1)))
+		do
+			
+# 		ndbd_data_node_id[$ndbd_cntr]="${tmp_nodeID}";
+# 		ndbd_data_IP[$ndbd_cntr]="${tmp_IP}";
+# 		ndbd_data_bckp_dir[$ndbd_cntr]="${tmp_backupDir}";
+# 		ndbd_data_cmd[$ndbd_cntr]="${tmp_command_ndbd}";
+# 		ndbd_data_local[$ndbd_cntr]=${tmp_localHit};
+			# logit "echo \"${add_sudo}service ${ndbd_data_cmd[idx]} status\" | ${ssh_command} ${user_name}@${ndbd_data_IP[idx]}";
+			# ndbd_start_status[$idx]=$(echo "${add_sudo}service ${ndbd_data_cmd[idx]} status" | ${ssh_command} ${user_name}@${ndbd_data_IP[idx]})
+
+			ndbd_start_status[$idx]=$(echo "ps aux | grep -v grep | grep -i ndbd | sed '1,1!d'" | ${ssh_command} ${user_name}@${ndbd_data_IP[idx]})
+			if [ "${ndbd_start_status[idx]}" != "" -a "${ndbd_start_status[idx]}" != "${ndbd_start_status[idx]/--initial/}" ]
+			then
+				
+				logit "MySQL Cluster NDB DATA NODE [${ndbd_data_node_id[idx]}] runnig in initial mode, no restart needed";
+			elif [ "${ndbd_start_status[idx]}" == "" ]
+			then
+				ndbd_initial_status=0;
+				logit "MySQL Cluster NDB DATA NODE [${ndbd_data_node_id[idx]}] is runnig in start mode, restart in initial mode is needed.";
+				logit "Executing restart initial at NDBD node [${ndbd_data_node_id[idx]}]";
+			else
+				ndbd_initial_status=0;
+				logit "MySQL Cluster NDB DATA NODE [${ndbd_data_node_id[idx]}] is NOT runnig ";
+			fi 
+			logit "DEBUG: idx: [${idx}] : ${ndbd_start_status[idx]}";
+		done
+		if [ ${ndbd_initial_status} -eq 1  ]
+		then
+			logit "Check MySQL CLuster single user mode status";
+			mysql_sluster_status=$(${add_sudo}ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'show' | sed '/ndbd/,/^ *$/!d;/^ *$/d;/^id/!d;/single user mode/!d' | wc -l)
+			if [ ${mysql_sluster_status} -eq $((${#ndbd_data_node_id[@]}-1)) ]
+			then
+				logit "Setting the MySQL CLuster DATA NODE [${API_NODE_ID}] at ${API_NODE_IP}] in single user mode";
+				mysql_sluster_set_sinlge_user_mode=$(${add_sudo}ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'enter single user mode ${API_NODE_ID}');
+			else
+				logit "No need to set the single user mode as its already activated";
+				logit "Executing FULL restore with table metadata."
+				cmd_restore="${add_sudo}ndb_restore -c ${API_NODE_IP}  ${restoreStringInclude} -b ${NDB_BACKUP_NUMBER} -n ${nodeID} -r ${NDB_BACKUP_DIR}"
+				logit "${cmd_restore}"
+				mysql_sluster_restore_result=$(${cmd_restore})
+				echo "${mysql_sluster_restore_result}"
+				# ERROR 1051 (42S02): Unknown table 
+				# Could not create hashmap "DEFAULT-HASHMAP-3840-2": 299: Operation not allowed or aborted due to single user mode
+				# Restore: Failed to restore table: sys/def/14/users_3b1c9c31 ... Exiting 
+				# Backup Id = 12
+				# Nodeid = 3
+				# backup path = /data/mysqlcluster/backup/BACKUP/BACKUP-12
+				# Opening file '/data/mysqlcluster/backup/BACKUP/BACKUP-12/BACKUP-12.3.ctl'
+				# File size 87368 bytes
+				# Backup version in files: ndb-6.3.11 ndb version: mysql-5.5.29 ndb-7.2.10
+				# Stop GCP of Backup: 710143
+				# Connected to ndb!!
+				# 
+				# NDBT_ProgramExit: 1 - Failed
+
+
+
+			fi
+		else
+			logit ""
+		fi
 		exit 0 ;
 		logit "ssh -q -nqtt -p22 ${user_name}@${ndbd[1]} '${command_restar_ndbd}' restart-initial"
 		logit "DEBUG : have to find the restart command at the other node !"
