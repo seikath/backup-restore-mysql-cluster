@@ -3,7 +3,7 @@
 # is410@epg-mysql-memo1:~/bin/epg.mysql.cluster.restore.sh
 # moved to bitbucket : 2013-02-06.15.26.48
 # 2013-02-17.03.14.12
-
+# 2013-02-17.14.07.09 - add backup data maintenance feature 
 # So far on RHEL .. porting to other distors after its done for RHEL 
 
 SCRIPT_NAME=${0%.*}
@@ -57,15 +57,12 @@ logit "UID check : ${user_name}"
 logit "Sudo check : ${sudo_status}"
 test ${no_passwd_check} -eq 1 && logit "No Passwd sudo check : Confirmed!"
 test ${no_passwd_check} -eq 0 && logit "No Passwd sudo check : NOTE -> Missing passwordless sudo!"
-logit "Got ndbd sercice restart command to be run by user ${user_name} : ${command_restar_ndbd}"
-
-
-
+#logit "Got ndbd sercice restart command to be run by user ${user_name} : ${command_restar_ndbd}"
 
 # get the available active IPs:
 local_ip_array=$(${add_sudo}ifconfig  | grep "inet addr:" | grep -v grep | awk '{print $2}' | sed 's/^addr://')
 
-# get the ndbd local ID 
+# get the ndbd data 
 data=$(${add_sudo}ndb_config -c ${ndb_mgmd[1]},${ndb_mgmd[2]} --type=ndbd --query=id,host,datadir -f ' ' -r '\n') 
 
 # get the recent data node ID, its IP and the data directory used
@@ -86,6 +83,7 @@ done
 # load the the recent data node ID, its IP and the data directory used
 if [ -f "${TMP_WORL_FILE}" ]
 then 
+	ndbd_cntr=0;
 	while read tmp_IP tmp_nodeID tmp_backupDir tmp_command_ndbd tmp_localHit
 	do
 		test -z ${tmp_localHit} && continue;
@@ -95,7 +93,13 @@ then
 			nodeID="${tmp_nodeID}";
 			backupDir="${tmp_backupDir}"
 		fi 
-		command_ndbd[${nodeID}]="${tmp_command_ndbd}"
+		command_ndbd[${nodeID}]="${tmp_command_ndbd}";
+		ndbd_data_id[$ndbd_cntr]="${tmp_nodeID}";
+		ndbd_data_IP[$ndbd_cntr]="${tmp_IP}";
+		ndbd_data_bckp_dir[$ndbd_cntr]="${tmp_backupDir}";
+		ndbd_data_cmd[$ndbd_cntr]="${tmp_command_ndbd}";
+		ndbd_data_local[$ndbd_cntr]=${tmp_localHit};
+		((++ndbd_cntr))
 	done < "${TMP_WORL_FILE}"
 else
 	logit "Missing data collection at ${TMP_WORL_FILE}. Exiting no." && exit 0;	
@@ -104,6 +108,7 @@ fi
 logit "got Local machine IP ${IP}";
 logit "got Local machine MySQL cluster nodeID : ${nodeID}";
 logit "got MySQL cluster backup Dir : ${backupDir}";
+logit "got MySQL cluster RHEL service command : ${backupDir}";
 
 # choose other backup available
 while [ 1  ]
@@ -347,8 +352,7 @@ do
 done
 
 logit "About to execute the restore procedure with the following options : [${restoreStringInclude}]."
-# exit 0;
-
+# possible stupid question to add : Do you want to proceed ? Y/N [Y]
 # checking the available API nodes :
 logit "Checking the available API nodes:"
 api_data=$(${add_sudo}ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'show' | sed  '/^\[mysqld(API)\]/,$!d;/^ *$/d')
@@ -365,12 +369,18 @@ do
 	# set the API node in single user more :
 	case $restore in
 	"F" | "f" | "FULL" | "Full" )
+		# loop again the data nodes 
+		logit "ndbd_data_id size=${#ndbd_data_id[@]}"
+		# resading the ndb data attay 
+		IFS=', ' read -a ArrayNDBData <<< "${ndbd_data_id}"
+		
+		exit 0 ;
 		logit "ssh -q -nqtt -p22 ${user_name}@${ndbd[1]} '${command_restar_ndbd}' restart-initial"
 		logit "DEBUG : have to find the restart command at the other node !"
 		logit "ssh -q -nqtt -p22 ${user_name}@${ndbd[2]} '${command_restar_ndbd}' restart-initial"
 		logit "Cheking the status of ndbd at  ${ndbd[1]}"
 		logit "${ssh_command} ${user_name}@${ndbd[1]} '${command_restar_ndbd} status'"
-		echo "${command_restar_ndbd} status" | ${ssh_command} ${user_name}@${ndbd[1]}
+		ndbd_status[]echo "${command_restar_ndbd} status" | ${ssh_command} ${user_name}@${ndbd[1]}
 		logit "Cheking the status of ndbd at  ${ndbd[2]}"
 		logit "ssh -q -nqtt -p22 ${user_name}@${ndbd[2]} '${command_restar_ndbd} status'"
 		logit "Setting the API node [${API_NODE_ID}] in single user"
