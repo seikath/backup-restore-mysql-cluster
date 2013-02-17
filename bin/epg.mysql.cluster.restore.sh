@@ -385,20 +385,43 @@ do
 		logit "Starting the restore process for databases(s) ${DbNameOnly_restrore_string}, please wait a bit .. "
 		restore_result=$(${add_sudo}ndb_restore  -c ${API_NODE_IP}  ${restoreStringInclude} -b ${NDB_BACKUP_NUMBER} -n ${nodeID} -r "${NDB_BACKUP_DIR}" 2>&1 | tee -a "${LOG_FILE}")
 		what_to_see=$(echo ${restore_result} | sed '/^Processing data in table/d')
-		restore_status=$(echo ${restore_result} | grep "NDBT_ProgramExit: 0 - OK" | grep -v grep)
-		test "${restore_status}" != "" && logit "The restore was successful! detailed log at ${LOG_FILE}." && logit "Slackware4File!"
-		test "${restore_status}" == "" && logit "The restore FAILED! detailed log at ${LOG_FILE}"
-
+		if [ "${what_to_see}" != "${what_to_see/NDBT_ProgramExit: 0 - OK/}" ]
+		then 
+			logit "The restore was successful! detailed log at ${LOG_FILE} ."
+			logit "Slackware4File!";
+		elif [ "${what_to_see}" != "${what_to_see/Unable to find table:/}" ]
+		then 
+			logit "The restore FAILED due to missing/broken tables! Detailed log at ${LOG_FILE}"
+			logit "We recommed full full restore with table metadata.";
+		elif [ "${what_to_see}" != "${what_to_see/Missing column/}" ]
+		then
+			logit "The restore FAILED due to missing/broken fields in a table! Detailed log at ${LOG_FILE}";
+			logit "We recommed full full restore with table metadata.";
+		else
+			logit "The restore FAILED";
+		fi
 	;;
 	"T" | "t" )
 		logit "Starting the restore process for table(s) ${DbNameTable_restrore_string}, please wait a bit .. "
 		restore_result=$(${add_sudo}ndb_restore  -c ${API_NODE_IP}  ${restoreStringInclude} -b ${NDB_BACKUP_NUMBER} -n ${nodeID} -r "${NDB_BACKUP_DIR}" 2>&1 | tee -a "${LOG_FILE}")
 		what_to_see=$(echo ${restore_result} | sed '/^Processing data in table/d')
-		restore_status=$(echo ${restore_result} | grep "NDBT_ProgramExit: 0 - OK" | grep -v grep)
-		test "${restore_status}" != "" && logit "The restore was successful! detailed log at ${LOG_FILE}" && logit "Slackware4File!"
-		test "${restore_status}" == "" && ${check_failed_tables} -gt 0 && logit "The restore FAILED! Detailed log at ${LOG_FILE}"
+		if [ "${what_to_see}" != "${what_to_see/NDBT_ProgramExit: 0 - OK/}" ]
+		then 
+			logit "The restore was successful! detailed log at ${LOG_FILE} ."
+			logit "Slackware4File!";
+		elif [ "${what_to_see}" != "${what_to_see/Unable to find table:/}" ]
+		then 
+			logit "The restore FAILED due to missing/broken tables! Detailed log at ${LOG_FILE}"
+			logit "We recommed full full restore with table metadata.";
+		elif [ "${what_to_see}" != "${what_to_see/Missing column/}" ]
+		then
+			logit "The restore FAILED due to missing/broken fields in a table! Detailed log at ${LOG_FILE}";
+			logit "We recommed full full restore with table metadata.";
+		else
+			logit "The restore FAILED";
+		fi
 	;;
-	*)Unable to find table: `django_admin_log`
+	*)
 		logit "Nothing to do here"
 	;;
 	esac
