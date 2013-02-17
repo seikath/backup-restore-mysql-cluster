@@ -233,12 +233,13 @@ do
 		break;
 		;; 
 		"D" | "d" | "Database" | "DATABASE" )
-		logit "Make sure the database is existing, otherwise the restore will fail."
+		logit "Make sure the database is existing, otherwise the restore will fail and you would need full MySQL initialization restore"
+		# add here check of the MySQL cluster data nodes status 
 		logit "Fetching the databases from the MySQL cluster ... "
 		# Fetch the databases from the MySQL Cluster : 
 		data_ndb_databases_online=$(${add_sudo}ndb_show_tables -c ${ndb_mgmd[1]},${ndb_mgmd[2]} -t 2 | awk '$1 ~ /^[[:digit:]]/ && $2 == "UserTable" && $3 == "Online"  {print $5}' | sort | uniq)
 		cntr=0;
-		for DbName  in ${data_ndb_databases_online}
+		for DbName in ${data_ndb_databases_online}
 		do 
 			((++cntr));
 			dbArrayName[${cntr}]="${DbName}";
@@ -272,15 +273,19 @@ do
 						then 
 							commat="";
 							test "${DbNameOnly_restrore_string}" != "" && commat=",";
-							DbNameOnly_restrore_string="${DbNameOnly_restrore_string}${commat}${ArrayUserDbNames[idx]}";
 						 	crap[$idx]=0;
 							logit "[${ArrayUserDbNames[idx]}] : Confirmed";
 							break;
 						fi
 					done
-					test ${crap[idx]} -eq 1 && logit "Database ${ArrayUserDbNames[idx]} is missing in the curent MySQL Cluster! Exiting now." && exit 0;
+					DbNameOnly_restrore_string="${DbNameOnly_restrore_string}${commat}${ArrayUserDbNames[idx]}";
+					test ${crap[idx]} -eq 1 \
+					&& logit "Note : the database ${ArrayUserDbNames[idx]} is missing in the curent MySQL Cluster!" \
+					&& logit "We recommend restore witj DDL/metadata" \
+					&& logit "After a successfull restore of a MISSING database you HAVE TO CREATE IT by \"mysql> create database ${ArrayUserDbNames[idx]};\"" \
+					&& logit "Then all the restored tables and data will be accessible.";
+										
 				done
-
 				# check if the DDL should be restored as well :
 				while [ 1  ]
 				do
@@ -304,8 +309,8 @@ do
 						esac
 					fi
 				done 
-				logit "Proceeding with the BACKUP of the database(s) ${DbNameOnly_restrore_string}"
-				logit "DEBUG : restoreStringInclude : ${restoreStringInclude}";
+				#logit "Proceeding with the BACKUP of the database(s) ${DbNameOnly_restrore_string}"
+				#logit "DEBUG : restoreStringInclude : ${restoreStringInclude}";
 				# restoreStringInclude="--include-databases=${DbNameOnly_restrore_string}";
 				break 2;
 			else 
@@ -416,7 +421,7 @@ do
 	API_NODE_ID=${API_NODE_ID/*=/}
 	test `echo "${crap}" | grep "not connected" | wc -l` -gt 0 && logit "Skipping NOT CONNECTED API Node ID [${API_NODE_ID}] ${API_NODE_IP}{$crap}" && continue;
 	API_NODE_IP=${API_NODE_IP/@/}
-	logit "Procceding API_NODE_ID : [${API_NODE_ID}] at API_NODE_IP : [${API_NODE_IP}]"
+	logit "Procceding MySQL CLuster API NODE [${API_NODE_ID}] at [${API_NODE_IP}]"
 	API_NODE_ID=${API_NODE_ID/*=/}
 	# set the API node in single user more :
 	case $restore in
@@ -425,15 +430,6 @@ do
 		ndbd_initial_status=1;
 		for idx in $(seq 0 $((${#ndbd_data_node_id[@]} - 1)))
 		do
-			
-# 		ndbd_data_node_id[$ndbd_cntr]="${tmp_nodeID}";
-# 		ndbd_data_IP[$ndbd_cntr]="${tmp_IP}";
-# 		ndbd_data_bckp_dir[$ndbd_cntr]="${tmp_backupDir}";
-# 		ndbd_data_cmd[$ndbd_cntr]="${tmp_command_ndbd}";
-# 		ndbd_data_local[$ndbd_cntr]=${tmp_localHit};
-			# logit "echo \"${add_sudo}service ${ndbd_data_cmd[idx]} status\" | ${ssh_command} ${user_name}@${ndbd_data_IP[idx]}";
-			# ndbd_start_status[$idx]=$(echo "${add_sudo}service ${ndbd_data_cmd[idx]} status" | ${ssh_command} ${user_name}@${ndbd_data_IP[idx]})
-
 			ndbd_start_status[$idx]=$(echo "ps aux | grep -v grep | grep -i ndbd | sed '1,1!d'" | ${ssh_command} ${user_name}@${ndbd_data_IP[idx]})
 			if [ "${ndbd_start_status[idx]}" != "" -a "${ndbd_start_status[idx]}" != "${ndbd_start_status[idx]/--initial/}" ]
 			then
