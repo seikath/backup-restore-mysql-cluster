@@ -355,13 +355,13 @@ do
 						then
 							commat="";
 							test "${DbNameTable_restrore_string}" != "" && commat=",";
-							DbNameTable_restrore_string="${DbNameTable_restrore_string}${commat}${userTables[idx]}";
 							crap[$idx]=0;
 							logit "[${userTables[idx]}] : Confirmed";
 							break;
 						fi 
 					done
-					test ${crap[idx]} -eq 1 && logit "Table ${userTables[idx]} is missing in the curent MySQL Cluster! Exiting now." && exit 0;
+					DbNameTable_restrore_string="${DbNameTable_restrore_string}${commat}${userTables[idx]}";
+					test ${crap[idx]} -eq 1 && logit "NOTE : Table ${userTables[idx]} is missing in the curent MySQL Cluster!";
 				done
 
 				# check if the DDL should be restored as well :
