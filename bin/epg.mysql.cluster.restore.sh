@@ -2,6 +2,7 @@
 # epgbcn4 aka seikath@gmail.com
 # is410@epg-mysql-memo1:~/bin/epg.mysql.cluster.restore.sh
 # moved to bitbucket : 2013-02-06.15.26.48
+# 2013-02-17.03.14.12
 
 # So far on RHEL .. porting to other distors after its done for RHEL 
 
@@ -18,6 +19,8 @@ else
         logit "Missing config file ${CONF_FILE} !  Exiting now."
         exit 0
 fi
+# activating debug 
+test $DEBUG -eq 1 && set -x
 
 # initialize the tmp file 
 test `echo "" >  "${TMP_WORL_FILE}"` && logit "${TMP_WORL_FILE} initialized!"
@@ -232,9 +235,9 @@ do
 		do 
 			((++cntr));
 			dbArrayName[${cntr}]="${DbName}";
-			comma="  : ";
+			comma=" => ";
 			test $cntr -gt 9 &&  comma=" : "
-			logit "[${cntr}]${comma}[${DbName}]";
+			logit "Found database${comma}[${DbName}]";
 			lastdbArrayName="${DbName}";
 		done
 
@@ -362,23 +365,6 @@ do
 	# set the API node in single user more :
 	case $restore in
 	"F" | "f" | "FULL" | "Full" )
-		# Not Active, to be added finall stupid question "ARE YOU SURE?"
-
-
-# # getting the user ID, check sudo, ndbd restart command 
-# check_is_root=$(id | sed '/^uid=0/!d' | wc -l)
-# user_name=$(id -nu)
-# 
-# command_ndbd=$(chkconfig --list| grep ndbd | awk '{print $1}')
-# command_ndbd="service ${command_ndbd} restart-initial"
-# command_restar_ndbd="sudo ${command_ndbd}"
-# sudo_status=$(sudo -l | tr '\n|\r' ' ' | sed 's/^.*User /User /;s/  */ /g' | grep -i "${user_name}")
-# no_passwd_check=0
-# test `echo ${sudo_status} | grep "(ALL) NOPASSWD: ALL" | wc -l ` -gt 0  && no_passwd_check=1
-# 
-# test $check_is_root -eq 1 && command_restar_ndbd="${command_ndbd}"
-
-
 		logit "ssh -q -nqtt -p22 ${user_name}@${ndbd[1]} '${command_restar_ndbd}' restart-initial"
 		logit "DEBUG : have to find the restart command at the other node !"
 		logit "ssh -q -nqtt -p22 ${user_name}@${ndbd[2]} '${command_restar_ndbd}' restart-initial"
@@ -397,21 +383,22 @@ do
 	;;
 	"D" | "d" | "Database" | "DATABASE" )
 		logit "Starting the restore process for databases(s) ${DbNameOnly_restrore_string}, please wait a bit .. "
-		restore_result=$(${add_sudo}ndb_restore  -c ${API_NODE_IP}  ${restoreStringInclude} -b ${NDB_BACKUP_NUMBER} -n ${nodeID} -r "${NDB_BACKUP_DIR}" | tee -a "${LOG_FILE}")
+		restore_result=$(${add_sudo}ndb_restore  -c ${API_NODE_IP}  ${restoreStringInclude} -b ${NDB_BACKUP_NUMBER} -n ${nodeID} -r "${NDB_BACKUP_DIR}" 2>&1 | tee -a "${LOG_FILE}")
 		what_to_see=$(echo ${restore_result} | sed '/^Processing data in table/d')
 		restore_status=$(echo ${restore_result} | grep "NDBT_ProgramExit: 0 - OK" | grep -v grep)
 		test "${restore_status}" != "" && logit "The restore was successful! detailed log at ${LOG_FILE}." && logit "Slackware4File!"
-		test "${restore_status}" == "" && logit "The restore FAILED! detailed log at ${LOG_FILE}."
+		test "${restore_status}" == "" && logit "The restore FAILED! detailed log at ${LOG_FILE}"
+
 	;;
 	"T" | "t" )
 		logit "Starting the restore process for table(s) ${DbNameTable_restrore_string}, please wait a bit .. "
-		restore_result=$(${add_sudo}ndb_restore  -c ${API_NODE_IP}  ${restoreStringInclude} -b ${NDB_BACKUP_NUMBER} -n ${nodeID} -r "${NDB_BACKUP_DIR}" | tee -a "${LOG_FILE}")
+		restore_result=$(${add_sudo}ndb_restore  -c ${API_NODE_IP}  ${restoreStringInclude} -b ${NDB_BACKUP_NUMBER} -n ${nodeID} -r "${NDB_BACKUP_DIR}" 2>&1 | tee -a "${LOG_FILE}")
 		what_to_see=$(echo ${restore_result} | sed '/^Processing data in table/d')
 		restore_status=$(echo ${restore_result} | grep "NDBT_ProgramExit: 0 - OK" | grep -v grep)
-		test "${restore_status}" != "" && logit "The restore was successful! detailed log at ${LOG_FILE}." && logit "Slackware4File!"
-		test "${restore_status}" == "" && logit "The restore FAILED! detailed log at ${LOG_FILE}."
+		test "${restore_status}" != "" && logit "The restore was successful! detailed log at ${LOG_FILE}" && logit "Slackware4File!"
+		test "${restore_status}" == "" && ${check_failed_tables} -gt 0 && logit "The restore FAILED! Detailed log at ${LOG_FILE}"
 	;;
-	*)
+	*)Unable to find table: `django_admin_log`
 		logit "Nothing to do here"
 	;;
 	esac
