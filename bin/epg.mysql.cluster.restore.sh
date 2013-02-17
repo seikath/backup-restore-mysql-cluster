@@ -34,8 +34,8 @@ function logit () {
 check_is_root=$(id | sed '/^uid=0/!d' | wc -l)
 user_name=$(id -nu)
 
-command_ndbd=$(chkconfig --list| grep ndbd | awk '{print $1}')
-command_ndbd="service ${command_ndbd} restart-initial"
+local_command_ndbd=$(chkconfig --list| grep ndbd | awk '{print $1}')
+command_ndbd="service ${local_command_ndbd} restart-initial"
 command_restar_ndbd="sudo ${command_ndbd}"
 sudo_status=$(sudo -l | tr '\n|\r' ' ' | sed 's/^.*User /User /;s/  */ /g' | grep -i "${user_name}")
 no_passwd_check=0
@@ -92,6 +92,7 @@ then
 			IP="${tmp_IP}";
 			nodeID="${tmp_nodeID}";
 			backupDir="${tmp_backupDir}"
+			
 		fi 
 		command_ndbd[${nodeID}]="${tmp_command_ndbd}";
 		ndbd_data_node_id[$ndbd_cntr]="${tmp_nodeID}";
@@ -107,8 +108,8 @@ fi
 
 logit "got Local machine IP ${IP}";
 logit "got Local machine MySQL cluster nodeID : ${nodeID}";
-logit "got MySQL cluster backup Dir : ${backupDir}";
-logit "got MySQL cluster RHEL service command : ${backupDir}";
+logit "got MySQL cluster local backup Dir : ${backupDir}";
+logit "got MySQL cluster RHEL local service command : ${local_command_ndbd}";
 
 # choose other backup available
 while [ 1  ]
@@ -133,7 +134,7 @@ do
 		done
 		;; 
 		"No" | "n" | "N" )
-		logit "Proceeding wit the condifured nightly backup.."
+		logit "Proceeding with the condifured nightly backup.."
 		break;
 		;;
 		*)
@@ -210,7 +211,8 @@ then
         logit "Checking the backup consistency:"
         NDB_BACKUP_STATUS=$(${add_sudo}ndb_print_backup_file "${NDB_BACKUP_LOG}")
 	test `echo ${NDB_BACKUP_STATUS}  | grep -i "NDBBCKUP" | wc -l ` -eq 0 && logit "${NDB_BACKUP_LOG} is NOT NDB consistane Backup file!" && exit 0
-	echo "${NDB_BACKUP_STATUS}"
+	# echo "${NDB_BACKUP_STATUS}"
+	logit "Confirmed : ${NDB_BACKUP_DIR} contains consistent backup"
 else 
         logit "ERROR : Missing NDB BACKUP directory ${NDB_BACKUP_DIR}!"
 fi
@@ -278,8 +280,33 @@ do
 					done
 					test ${crap[idx]} -eq 1 && logit "Database ${ArrayUserDbNames[idx]} is missing in the curent MySQL Cluster! Exiting now." && exit 0;
 				done
+
+				# check if the DDL should be restored as well :
+				while [ 1  ]
+				do
+					read  -r -p "$(date)::[${HOSTNAME}] : Do you want the table metadata to be restored as well? Y/N : "  restoreDDL;
+					if [ "${restoreDDL}" != "" ]
+					then
+						case ${restoreDDL} in
+						"Y" | "y" | "yes" | "Yes" | "YES" )
+						logit "Including the DDLL/meta table data restore";
+						restoreStringInclude="-m --include-databases=${DbNameOnly_restrore_string}";
+						break;
+						;;
+						"N" | "n" | "No" | "NO" | "Non" )
+						logit "Skipping the DDL/meta table data restore";
+						restoreStringInclude="--include-databases=${DbNameOnly_restrore_string}";
+						break;
+						;;
+						*)
+						logit "Please choose [Y]es or [N]O!"
+						;;
+						esac
+					fi
+				done 
 				logit "Proceeding with the BACKUP of the database(s) ${DbNameOnly_restrore_string}"
-				restoreStringInclude="--include-databases=${DbNameOnly_restrore_string}";
+				logit "DEBUG : restoreStringInclude : ${restoreStringInclude}";
+				# restoreStringInclude="--include-databases=${DbNameOnly_restrore_string}";
 				break 2;
 			else 
 				logit "Empry database(s) name to be restored!"
