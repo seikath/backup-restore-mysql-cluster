@@ -413,20 +413,6 @@ do
 				logit "${cmd_restore}"
 				mysql_sluster_restore_result=$(${cmd_restore})
 				echo "${mysql_sluster_restore_result}"
-				# ERROR 1051 (42S02): Unknown table 
-				# Could not create hashmap "DEFAULT-HASHMAP-3840-2": 299: Operation not allowed or aborted due to single user mode
-				# Restore: Failed to restore table: sys/def/14/users_3b1c9c31 ... Exiting 
-				# Backup Id = 12
-				# Nodeid = 3
-				# backup path = /data/mysqlcluster/backup/BACKUP/BACKUP-12
-				# Opening file '/data/mysqlcluster/backup/BACKUP/BACKUP-12/BACKUP-12.3.ctl'
-				# File size 87368 bytes
-				# Backup version in files: ndb-6.3.11 ndb version: mysql-5.5.29 ndb-7.2.10
-				# Stop GCP of Backup: 710143
-				# Connected to ndb!!
-				# 
-				# NDBT_ProgramExit: 1 - Failed
-
 
 
 			fi
