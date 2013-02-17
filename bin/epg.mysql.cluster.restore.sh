@@ -81,14 +81,11 @@ do
 done
 
 # load the the recent data node ID, its IP and the data directory used
-logit "DEBUG : reading lines from  ${TMP_WORL_FILE}"
 if [ -f "${TMP_WORL_FILE}" ]
 then 
-	sed '/^ *$/d'  "${TMP_WORL_FILE}" | \
-#	sed '/^ *$/d' | \ 
 	while read tmp_IP tmp_nodeID tmp_backupDir tmp_command_ndbd tmp_localHit
 	do
-		logit "DEBUG : reading line  ${tmp_IP} ${tmp_nodeID} ${tmp_backupDir} ${tmp_command_ndbd} ${tmp_localHit}"
+		test -z ${tmp_localHit} && continue;
 		if [ ${tmp_localHit} -eq 1 ] 
 		then
 			IP="${tmp_IP}";
@@ -96,7 +93,7 @@ then
 			backupDir="${tmp_backupDir}"
 		fi 
 		command_ndbd[${nodeID}]="${tmp_command_ndbd}"
-	done # < "${TMP_WORL_FILE}"
+	done < "${TMP_WORL_FILE}"
 else
 	logit "Missing data collection at ${TMP_WORL_FILE}. Exiting no." && exit 0;	
 fi
