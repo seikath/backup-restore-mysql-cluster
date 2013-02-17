@@ -7,7 +7,7 @@
 # So far on RHEL .. porting to other distors after its done for RHEL 
 
 SCRIPT_NAME=${0%.*}
-LOG_FILE="$(basename ${SCRIPT_NAME}).log"
+LOG_FILE="$(basename ${SCRIPT_NAME}).$(date +%Y-%m-%d.%H.%M.%S).log"
 CONF_FILE=${SCRIPT_NAME}.conf
 TMP_WORL_FILE="/tmp/${HOSTNAME}.$(basename ${SCRIPT_NAME}).tmp"
 
@@ -500,7 +500,7 @@ do
 		elif [ "${what_to_see}" != "${what_to_see/Unable to find table:/}" ]
 		then 
 			logit "The restore FAILED due to missing/broken tables! Detailed log at ${LOG_FILE}"
-			logit "We recommed full full restore with table metadata.";
+			logit "We recommed restore the table metadata of $(echo ${what_to_see} | sed 's/^.*Unable to find table:/Unable to find table:/;s/^Unable to find table: //;s/ .*$//' ) table";
 		elif [ "${what_to_see}" != "${what_to_see/Missing column/}" ]
 		then
 			logit "The restore FAILED due to missing/broken fields in a table! Detailed log at ${LOG_FILE}";
