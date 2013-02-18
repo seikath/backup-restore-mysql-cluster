@@ -69,8 +69,10 @@ data=$(${add_sudo}ndb_config -c ${ndb_mgmd[1]},${ndb_mgmd[2]} --type=ndbd --quer
 echo "${data}" | \
 while read nodeID  nodeIP backupDir
 do	
-	logit "Getting the ndbd start script name from ${user_name}@${nodeIP}"
-	command_ndbd[${nodeID}]=$(echo "${add_sudo}/sbin/chkconfig --list" | ${ssh_command} ${user_name}@${nodeIP}  | grep ndb | awk '{print $1}')
+	command_ndbd[${nodeID}]="ndbd";
+	test ${CHECK_SERICE_SCRIPTS} -eq 1 \
+	&& logit "Getting the ndbd start script name from ${user_name}@${nodeIP}" \
+	&& command_ndbd[${nodeID}]=$(echo "${add_sudo}/sbin/chkconfig --list" | ${ssh_command} ${user_name}@${nodeIP}  | grep ndb | awk '{print $1}');
 	localHit=0;
 	for IP in ${local_ip_array}
         do
@@ -273,7 +275,7 @@ do
 							commat="";
 							test "${DbNameOnly_restrore_string}" != "" && commat=",";
 						 	crap[$idx]=0;
-							logit "[${ArrayUserDbNames[idx]}] : Confirmed";
+							logit "Database ${ArrayUserDbNames[idx]} is existing at MySQL Cluster";
 							break;
 						fi
 					done
@@ -408,12 +410,12 @@ do
 done
 
 # Put here the stupid windows question : 
-# logit "About to execute the restore procedure with the following options : [${restoreStringInclude}]."
 # possible stupid question to add : Do you want to proceed ? Y/N [Y]
 # checking the available API nodes :
 logit "Checking the available API nodes:"
 api_data=$(${add_sudo}ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'show' | sed  '/^\[mysqld(API)\]/,$!d;/^ *$/d')
-# skip the API NODES LISTING # echo "${api_data}"
+# skip the API NODES LISTING # 
+test ${DEBUG} -eq 1 && echo "${api_data}";
 #get the first node : 
 echo "${api_data}" | sed  '/^\[mysqld(API)\]/d' | \
 while read  API_NODE_ID API_NODE_IP crap
@@ -488,7 +490,7 @@ do
 		logit "${add_sudo}ndb_mgms --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'exit single user mode'"
 	;;
 	"D" | "d" | "Database" | "DATABASE" )
-		logit "Starting the restore process for databases(s) ${DbNameOnly_restrore_string}, please wait a bit .. "
+		test ${DEBUG} -eq 1 && logit "Starting the restore process for ${DbNameOnly_restrore_string}, please wait a bit .. "
 		restore_result=$(${add_sudo}ndb_restore  -c ${API_NODE_IP}  ${restoreStringInclude} -b ${NDB_BACKUP_NUMBER} -n ${nodeID} -r "${NDB_BACKUP_DIR}" 2>&1 | tee -a "${LOG_FILE}")
 		what_to_see=$(echo ${restore_result} | sed '/^Processing data in table/d')
 		if [ "${what_to_see}" != "${what_to_see/NDBT_ProgramExit: 0 - OK/}" ]
@@ -519,11 +521,11 @@ do
 			logit "1. Restore the table ${failing_db}.${failing_table} without the table metadata OR";
 			logit "2. In case the step fails due to missing tables we reccomend FULL restore with dropping the database";
 		else
-			logit "The restore FAILED";
+			logit "The restore FAILED! Detailed log at ${LOG_FILE} ";
 		fi
 	;;
 	"T" | "t" )
-		logit "Starting the restore process for table(s) ${DbNameTable_restrore_string}, please wait a bit .. "
+		test ${DEBUG} -eq 1 && logit "Starting the restore process for table(s) ${DbNameTable_restrore_string}, please wait a bit .. ";
 		restore_result=$(${add_sudo}ndb_restore  -c ${API_NODE_IP}  ${restoreStringInclude} -b ${NDB_BACKUP_NUMBER} -n ${nodeID} -r "${NDB_BACKUP_DIR}" 2>&1 | tee -a "${LOG_FILE}")
 		what_to_see=$(echo ${restore_result} | sed '/^Processing data in table/d')
 		if [ "${what_to_see}" != "${what_to_see/NDBT_ProgramExit: 0 - OK/}" ]
@@ -547,7 +549,7 @@ do
 			logit "1. Restore without the table metadata OR";
 			logit "2. In case the step fails due to missing tables we recomend FULL restore with dropping the database";
 		else
-			logit "The restore FAILED";
+			logit "The restore FAILED! Detailed log at ${LOG_FILE} ";
 		fi
 	;;
 	*)
