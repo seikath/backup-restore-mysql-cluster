@@ -333,7 +333,7 @@ do
 			dbArray[${cntr}]="${DbNameAndTable}";
 			comma="  : ";
 			test $cntr -gt 9 &&  comma=" : "
-			logit "[${cntr}]${comma}[${DbNameAndTable}]";
+			logit "Found existing table${comma}[${DbNameAndTable}]";
 			lastdbArray="${DbNameAndTable}";
 		done
 		# Get the users Database and table choice
@@ -421,7 +421,7 @@ do
 	API_NODE_ID=${API_NODE_ID/*=/}
 	test `echo "${crap}" | grep "not connected" | wc -l` -gt 0 && logit "Skipping NOT CONNECTED API Node ID [${API_NODE_ID}] ${API_NODE_IP}{$crap}" && continue;
 	API_NODE_IP=${API_NODE_IP/@/}
-	logit "Procceding MySQL CLuster API NODE [${API_NODE_ID}] at [${API_NODE_IP}]"
+	logit "Procceding with MySQL CLuster API NODE [${API_NODE_ID}] at [${API_NODE_IP}]"
 	API_NODE_ID=${API_NODE_ID/*=/}
 	# set the API node in single user more :
 	case $restore in
@@ -501,13 +501,22 @@ do
 			logit "We recommed restore the table metadata of $(echo ${what_to_see} | sed 's/^.*Unable to find table:/Unable to find table:/;s/^Unable to find table: //;s/ .*$//' ) table";
 		elif [ "${what_to_see}" != "${what_to_see/Missing column/}" ]
 		then
-			logit "The restore FAILED due to missing/broken fields in a table! Detailed log at ${LOG_FILE}";
-			logit "We recommed full full restore with table metadata.";
+			failing_table=$(echo ${what_to_see} | sed 's/.*Restore: Failed to restore data, //;s/ .*$//')
+			failing_db=${failing_table%%/*}
+			failing_table=${failing_table##*/}
+			logit "The restore FAILED due to missing/broken fields in the table ${failing_db}.${failing_table}! Detailed log at ${LOG_FILE}";
+			logit "We recommed the following steps:";	
+			logit "1. Drop the table table ${failing_db}.${failing_table}";
+			logit "2. Restore the table ${failing_db}.${failing_table} with the table metadata OR :";	
+			logit "3. Perform FULL MySQL CLuster restore with table metadata.";
 		elif [ "${what_to_see}" != "${what_to_see/Schema object with given name already exists/}" ]
 		then
-			logit "The restore FAILED due to attempt to create an exsisting table! Detailed log at ${LOG_FILE}";
+			failing_table=$(echo ${what_to_see} | sed 's/.*Restore: Failed to restore data, //;s/ .*$//')
+			failing_db=${failing_table%%/*}
+			failing_table=${failing_table##*/}
+			logit "The restore FAILED due to attempt to create an exsisting table ${failing_db}.${failing_table}! Detailed log at ${LOG_FILE}";
 			logit "We recommed the following steps:";
-			logit "1. Restore without the table metadata OR";
+			logit "1. Restore the table ${failing_db}.${failing_table} without the table metadata OR";
 			logit "2. In case the step fails due to missing tables we reccomend FULL restore with dropping the database";
 		else
 			logit "The restore FAILED";
