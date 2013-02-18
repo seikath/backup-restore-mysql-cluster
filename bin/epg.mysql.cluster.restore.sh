@@ -556,7 +556,7 @@ do
 		logit "Nothing to do here"
 	;;
 	esac
-	status=$(${add_sudo}ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'show' | grep "^id={$nodeID}" | grep "@${IP}")
+	status=$(${add_sudo}ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'show')
 	logit "Cluster status of ndbd id ${nodeID} : ${status}"
 	break; # we execute on the first acive API node
 done
