@@ -10,6 +10,15 @@ LOG_FILE="$(basename ${SCRIPT_NAME}).$(date +%Y-%m-%d.%H.%M.%S).log"
 CONF_FILE=${SCRIPT_NAME}.conf
 TMP_WORL_FILE="/tmp/${HOSTNAME}.$(basename ${SCRIPT_NAME}).tmp"
 
+#check tmp file creation 
+touch ${TMP_WORL_FILE}
+if [ $? -gt 0 ] 
+then
+	logit "Not able to create the ${TMP_WORL_FILE}"
+	TMP_WORL_FILE=$(basename ${TMP_WORL_FILE})
+	logit "Switching to local tmp file $(pwd)/${TMP_WORL_FILE}"
+fi
+
 # Loading configuraion 
 if [ -f "${CONF_FILE}" ]
 then
