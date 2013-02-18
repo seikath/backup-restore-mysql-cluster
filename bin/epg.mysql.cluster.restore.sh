@@ -2,8 +2,7 @@
 # epgbcn4 aka seikath@gmail.com
 # is410@epg-mysql-memo1:~/bin/epg.mysql.cluster.restore.sh
 # moved to bitbucket : 2013-02-06.15.26.48
-# 2013-02-17.03.14.12
-# 2013-02-17.14.07.09 - add backup data maintenance feature 
+# 2013-02-18.10.37.19 - add debug/test mode
 # So far on RHEL .. porting to other distors after its done for RHEL 
 
 SCRIPT_NAME=${0%.*}
@@ -408,12 +407,13 @@ do
         fi
 done
 
-logit "About to execute the restore procedure with the following options : [${restoreStringInclude}]."
+# Put here the stupid windows question : 
+# logit "About to execute the restore procedure with the following options : [${restoreStringInclude}]."
 # possible stupid question to add : Do you want to proceed ? Y/N [Y]
 # checking the available API nodes :
 logit "Checking the available API nodes:"
 api_data=$(${add_sudo}ndb_mgm --ndb-mgmd-host=${ndb_mgmd[1]},${ndb_mgmd[2]} -e 'show' | sed  '/^\[mysqld(API)\]/,$!d;/^ *$/d')
-echo "${api_data}"
+# skip the API NODES LISTING # echo "${api_data}"
 #get the first node : 
 echo "${api_data}" | sed  '/^\[mysqld(API)\]/d' | \
 while read  API_NODE_ID API_NODE_IP crap
