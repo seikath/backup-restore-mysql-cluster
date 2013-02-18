@@ -50,8 +50,6 @@ test `echo ${sudo_status} | grep "(ALL) NOPASSWD: ALL" | wc -l ` -gt 0  && no_pa
 test $check_is_root -eq 1 && command_restar_ndbd="${command_ndbd}"
 
 
-
-
 if [ ${no_passwd_check} -eq 1 ]
 then 
 	add_sudo="sudo ";
