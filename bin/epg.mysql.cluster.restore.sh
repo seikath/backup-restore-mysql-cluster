@@ -162,7 +162,7 @@ then
 fi 
 
 # check the content of the backup directory provided 
-logit "DEBUG : check the content of the backup directory provided [${backupDir}]"
+test ${DEBUG} -eq 1 && logit "DEBUG : check the content of the backup directory provided [${backupDir}]"
 if [ -d "${backupDir}" ]
 then
 	${add_sudo}ls -1rt "${backupDir}/" |  while read crap; do logit "Found possible local backup of ndb_mgmd id ${nodeID}::${IP} : [$crap]";done
