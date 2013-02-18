@@ -427,6 +427,8 @@ do
 	case $restore in
 	"F" | "f" | "FULL" | "Full" )
 		# loop again the data nodes 
+		logit "The Full MySQL custer restore has been deactivated at that time. The proceeding will be added after extensive testing."
+		exit 0;
 		ndbd_initial_status=1;
 		for idx in $(seq 0 $((${#ndbd_data_node_id[@]} - 1)))
 		do
