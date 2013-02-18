@@ -10,13 +10,17 @@ LOG_FILE="$(basename ${SCRIPT_NAME}).$(date +%Y-%m-%d.%H.%M.%S).log"
 CONF_FILE=${SCRIPT_NAME}.conf
 TMP_WORL_FILE="/tmp/${HOSTNAME}.$(basename ${SCRIPT_NAME}).tmp"
 
+function logit () {
+    echo "$(date)::[${HOSTNAME}] : ${1}"
+    echo "$(date)::[${HOSTNAME}] : ${1}" >> "${LOG_FILE}"
+}
 #check tmp file creation 
 touch ${TMP_WORL_FILE}
 if [ $? -gt 0 ] 
 then
-	logit "Not able to create the ${TMP_WORL_FILE}"
-	TMP_WORL_FILE=$(basename ${TMP_WORL_FILE})
-	logit "Switching to local tmp file $(pwd)/${TMP_WORL_FILE}"
+	logit "Not able to create the ${TMP_WORL_FILE}";
+	TMP_WORL_FILE=$(basename ${TMP_WORL_FILE});
+	logit "Switching to local tmp file $(pwd)/${TMP_WORL_FILE}";
 fi
 
 # Loading configuraion 
@@ -32,11 +36,6 @@ test $DEBUG -eq 1 && set -x
 
 # initialize the tmp file 
 test `echo "" >  "${TMP_WORL_FILE}"` && logit "${TMP_WORL_FILE} initialized!"
-
-function logit () {
-    echo "$(date)::[${HOSTNAME}] : ${1}"
-    echo "$(date)::[${HOSTNAME}] : ${1}" >> "${LOG_FILE}"
-}
 
 # getting the user ID, check sudo, ndbd restart command 
 check_is_root=$(id | sed '/^uid=0/!d' | wc -l)
