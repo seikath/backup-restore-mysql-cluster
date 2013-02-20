@@ -2,7 +2,7 @@
 
 This epg-mysql-cluster restore script:
 install : 
-git clone http://puppet-gitlab-01.aislada.hi.inet/iss/epg-mysq-cluster.git
+git clone git@bitbucket.org:seikath/epg-mysql-cluster.git
 
 usage: 
 cd epg-mysq-cluster/bin
@@ -23,3 +23,7 @@ you may find then later in the separated log file that will me created.
 Cheers
 
 Slackware4Life!
+
+test markup
+<pre><code>This is a code block.
+</code></pre>
