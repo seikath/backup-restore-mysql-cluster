@@ -1,8 +1,10 @@
 # This is my README
 
-This scdipt has to be 
+This epg-mysql-cluster restore script:
+install : 
 git clone http://puppet-gitlab-01.aislada.hi.inet/iss/epg-mysq-cluster.git
 
+usage: 
 cd epg-mysq-cluster/bin
 chmod +x epg.mysql.cluster.restore.sh
 
