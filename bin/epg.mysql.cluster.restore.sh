@@ -1,10 +1,9 @@
 #!/bin/sh
 # epgbcn4 aka seikath@gmail.com
 # is410@epg-mysql-memo1:~/bin/epg.mysql.cluster.restore.sh
-# moved to bitbucket : 2013-02-06.15.26.48
+# 2013-02-06.15.26.48 : moved to git@bitbucket.org:seikath/epg-mysql-cluster.git
 # 2013-02-18.10.37.19 - add debug/test mode
-# So far on RHEL .. porting to other distors after its done for RHEL 
-
+# 2013-02-20.09.40.23 : moved to git@puppet-gitlab-01.aislada:iss/epg-mysq-cluster.git
 SCRIPT_NAME=${0%.*}
 LOG_FILE="$(basename ${SCRIPT_NAME}).$(date +%Y-%m-%d.%H.%M.%S).log"
 CONF_FILE=${SCRIPT_NAME}.conf
