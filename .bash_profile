@@ -1,7 +1,7 @@
 # .bash_profile
 # 2013-02-17.02.16.22
-# Catalyna 08304 
-# seikath@gmail.com 
+# Catalunya EPG@TID.ES 
+# epgbcn4@tid.es aka seikath@gmail.com 
 
 # Get the aliases and functions
 if [ -f ~/.bashrc ]; then
