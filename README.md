@@ -25,6 +25,4 @@ Cheers
 
 Slackware4Life!
 
-test markup
-<pre><code>This is a code block.
-</code></pre>
+
