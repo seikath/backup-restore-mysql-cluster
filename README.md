@@ -2,6 +2,7 @@
 
 This epg-mysql-cluster restore script:
 install : 
+
 git clone git@bitbucket.org:seikath/epg-mysql-cluster.git
 
 usage: 
@@ -18,7 +19,7 @@ execute as :
 ./epg.mysql.cluster.restore.sh 
 
 during the restore in case of failure some hints will be proposed.
-you may find then later in the separated log file that will me created.
+you may find then later in the separated log file that will be created.
 
 Cheers
 
