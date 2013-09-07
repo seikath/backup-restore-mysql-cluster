@@ -1,16 +1,16 @@
 # This is my README
 
-This epg-mysql-cluster restore script:
+This epg-mysql-cluster backup restore script:
 install : 
 
-git clone git@bitbucket.org:seikath/epg-mysql-cluster.git
+git clone git@github.com:seikath/backup-restore-mysql-cluster.git
 
 usage: 
 cd epg-mysq-cluster/bin
 chmod +x epg.mysql.cluster.restore.sh
 
 edit epg.mysql.cluster.restore.conf and put the proper IP values
-put the proper relatime BACKUP directory path /its in the NDBD data node direcotry/
+put the proper relative BACKUP directory path - its in the NDBD data node direcotry/
 
 the ssh communication at the moment is disabled in a view to avoid installing ssh keys etc.
 
