@@ -3,7 +3,7 @@
 This epg-mysql-cluster backup restore script:
 install : 
 
-git clone git@github.com:seikath/backup-restore-mysql-cluster.git
+git clone https://github.com/seikath/backup-restore-mysql-cluster
 
 usage: 
 cd epg-mysq-cluster/bin
